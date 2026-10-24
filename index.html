@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>山谷空拍</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="山谷空拍">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="description" content="3D 無人機空拍遊戲：在山谷風景區起飛、拍景點、錄湖景，再平安飛回家。">
+<meta name="theme-color" content="#0b1015">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="gl" aria-hidden="true"></div>
+  <canvas id="static" width="160" height="90" aria-hidden="true"></canvas>
+  <div class="ov" id="vignette"></div>
+  <div class="ov" id="viewfinder" hidden><i></i><i></i><i></i><i></i><span></span></div>
+  <div class="ov" id="flash"></div>
+
+  <div class="ov label" id="lblTarget" hidden>錄影點</div>
+  <div class="ov label" id="lblHome" hidden>H 起飛點</div>
+
+  <div class="ov glass" id="mission">
+    <h3>任務</h3>
+    <ol class="steps" id="steps">
+      <li class="now"><i>1</i><span>起飛</span></li>
+      <li><i>2</i><span>飛到北方山谷的錄影點</span></li>
+      <li><i>3</i><span>在山中湖上空錄影 6 秒</span></li>
+      <li><i>4</i><span>飛回起飛點降落</span></li>
+    </ol>
+    <div id="mSub">按住 <b>W</b> 起飛</div>
+    <div id="mPhotos" class="mphotos">拍照景點 <b>0 / 7</b></div>
+  </div>
+
+  <div class="ov" id="topc">
+    <canvas id="compass" width="760" height="76" class="glass" aria-hidden="true"></canvas>
+    <div id="alert" hidden></div>
+  </div>
+  <div class="ov glass" id="toast" style="opacity:0"></div>
+
+  <div class="ov" id="rightc">
+    <canvas id="map" width="336" height="336" class="glass" aria-label="小地圖"></canvas>
+    <div class="btns">
+      <button class="btn" id="bRth" type="button" aria-label="返航"><svg viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-5h4v5h5v-8h3z"/></svg><span class="bl">返航</span><kbd>H</kbd></button>
+      <button class="btn" id="bCam" type="button" aria-label="切換視角"><svg viewBox="0 0 24 24"><path d="M12 5C6.5 5 2.7 9.3 1.5 12c1.2 2.7 5 7 10.5 7s9.3-4.3 10.5-7C21.3 9.3 17.5 5 12 5zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg><span class="bl">視角</span><kbd>C</kbd></button>
+      <button class="btn" id="bAlbum" type="button" aria-label="相簿"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zm2 2v8.5l4-4.5 3 3.5 2.5-2.5L19 16V7zm11 1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg><span class="bl">相簿</span><b id="albumN" style="font:600 12px/1 var(--f-data)">0</b><kbd>G</kbd></button>
+      <button class="btn" id="bPause" type="button" aria-label="暫停"><svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg><kbd>P</kbd></button>
+      <button class="btn" id="bMusic" type="button" aria-label="背景音樂"><svg viewBox="0 0 24 24"><path d="M9 18.5a2.5 2.5 0 1 1-2-2.45V5l11-2v12.5a2.5 2.5 0 1 1-2-2.45V7.3L9 8.6z"/></svg><span class="bl">音樂開</span><kbd>N</kbd></button>
+      <button class="btn" id="bSound" type="button" aria-label="聲音"><svg viewBox="0 0 24 24"><path id="icoSound" d="M4 9h4l5-4v14l-5-4H4zM16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none"/></svg><span class="bl">聲音開</span><kbd>M</kbd></button>
+    </div>
+    <div class="updown">
+      <button class="ud up" id="bUp" type="button" aria-label="上升（按住）"><svg viewBox="0 0 24 24"><path d="M12 4 3 16h18z"/></svg><span>上升</span><kbd>T</kbd></button>
+      <button class="ud down" id="bDown" type="button" aria-label="降落"><svg viewBox="0 0 24 24"><path d="M12 20 3 8h18z"/></svg><span>降落</span><kbd>L</kbd></button>
+      <button class="ud shot" id="bShot" type="button" aria-label="拍照"><svg viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm8 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg><span>拍照</span><kbd>F</kbd></button>
+    </div>
+    <div id="shotReady" hidden></div>
+  </div>
+
+  <div class="ov glass" id="shot" hidden><img id="shotImg" alt="剛拍的照片"><div id="shotCap"></div></div>
+  <div class="ov glass" id="rec" hidden><i class="dot"></i><b>REC</b><div class="pbar"><i id="recFill"></i></div><span id="recTxt">0.0 / 6 秒</span></div>
+
+  <div class="ov glass" id="tele">
+    <div class="t"><em>高度</em><b id="tAlt">0</b><small>m</small></div>
+    <div class="t"><em>速度</em><b id="tSpd">0</b><small>m/s</small></div>
+    <div class="t"><em>離家</em><b id="tDist">0</b><small>m</small></div>
+    <div class="t"><em>風</em><span class="warrow" id="tWindArrow">↑</span><b id="tWind">0</b><small>m/s</small></div>
+    <div class="t" id="tBattWrap"><em>電量</em><div class="bbar"><i id="tBattFill"></i><u id="tBattNeed" title="返航所需電量"></u></div><b id="tBatt">100</b><small>%</small></div>
+    <div class="t"><em>訊號</em><span class="bars" id="tBars"><i></i><i></i><i></i><i></i></span><span id="tSigTxt" hidden>斷線</span></div>
+    <div class="t hide-touch"><em>時間</em><b id="tTime">0:00</b></div>
+  </div>
+  <div class="ov glass" id="viewName">追蹤視角</div>
+
+  <div class="stick" id="stickL" hidden><div class="base" id="baseL"><div class="knob" id="knobL"></div><span class="cap">上升・下降</span><span class="u">上升</span><span class="d">下降</span><span class="l dim">左轉</span><span class="r dim">右轉</span></div></div>
+  <div class="stick" id="stickR" hidden><div class="base" id="baseR"><div class="knob" id="knobR"></div><span class="cap">前後左右</span><span class="u">前進</span><span class="d">後退</span><span class="l">左移</span><span class="r">右移</span></div></div>
+
+  <div class="screen" id="loading"><div class="card"><div class="spin"></div><p>正在產生山區地形⋯⋯</p></div></div>
+
+  <div class="screen" id="start" hidden>
+    <div class="card start">
+      <div class="col">
+      <div class="eyebrow">無人機空拍遊戲</div>
+      <h1>山谷空拍</h1>
+      <p>從風景區入口的起飛點出發，沿著溪谷往北飛，到山谷深處的山中湖上空錄一段 6 秒的空拍影片，再飛回起飛點降落。羅盤和地圖上的<b style="color:var(--target)">橘色記號</b>就是錄影點。沿途還有 7 個<b style="color:var(--spot)">青色的拍照景點</b>（吊橋、瀑布、神木、湖畔涼亭⋯⋯），飛過去按「拍照」把它們收進相簿。</p>
+      <div class="hz">
+        <div style="--c:var(--sky)"><b>強風</b><span>越高風越大，飛機會被吹偏，也更耗電。</span></div>
+        <div style="--c:var(--warn)"><b>電量</b><span>電量用完馬達就停，飛機直接掉下來。電量條上的白線是「飛回家需要的電」。</span></div>
+        <div style="--c:var(--crit)"><b>訊號</b><span>山擋在你和飛機中間就會斷訊，斷線 2.5 秒飛機會自動返航。</span></div>
+      </div>
+      </div>
+      <div class="col">
+      <div class="ctrls" id="ctrlHelp">
+        <section id="helpKeys">
+          <h4>鍵盤（左手 WASD、右手方向鍵）</h4>
+          <table>
+            <tr><td><kbd class="k">W</kbd><kbd class="k">S</kbd></td><td>上升／下降（按住 W 起飛）</td></tr>
+            <tr><td><kbd class="k">T</kbd><kbd class="k">L</kbd></td><td>一鍵起飛／一鍵降落</td></tr>
+            <tr><td><kbd class="k">F</kbd><kbd class="k">G</kbd></td><td>拍照／打開相簿</td></tr>
+            <tr><td><kbd class="k">A</kbd><kbd class="k">D</kbd></td><td>左轉／右轉</td></tr>
+            <tr><td><kbd class="k">↑</kbd><kbd class="k">↓</kbd></td><td>前進／後退</td></tr>
+            <tr><td><kbd class="k">←</kbd><kbd class="k">→</kbd></td><td>向左／向右平移</td></tr>
+            <tr><td><kbd class="k">H</kbd> <kbd class="k">C</kbd> <kbd class="k">P</kbd></td><td>返航、切換視角、暫停</td></tr>
+            <tr><td><kbd class="k">M</kbd> <kbd class="k">N</kbd></td><td>全部聲音開關、背景音樂開關（暫停畫面可調音量）</td></tr>
+          </table>
+        </section>
+        <section id="helpTouch">
+          <h4>畫面上的兩個搖桿（用手指推，或用滑鼠拖）</h4>
+          <div class="sticksHelp">
+            <figure><div class="ring l"><i></i><span class="u">上升</span><span class="d">下降</span><span class="w dim">左轉</span><span class="e dim">右轉</span></div>
+              <figcaption><b>左邊搖桿</b>往上推飛上去，往下拉飛下來</figcaption></figure>
+            <figure><div class="ring r"><i></i><span class="u">前進</span><span class="d">後退</span><span class="w">左移</span><span class="e">右移</span></div>
+              <figcaption><b>右邊搖桿</b>往哪推，飛機就往前後左右飛</figcaption></figure>
+          </div>
+          <p class="note" style="margin-top:8px">最簡單的起飛和降落：按右上角的「上升」（按住會一直往上）和「降落」（按一下就自己降到地上）。手機建議橫著拿；接遊戲手把也是一樣的配置。</p>
+        </section>
+      </div>
+      <div class="row">
+        <button class="cta" id="bStart" type="button">開始飛行 <kbd class="hide-touch">Enter</kbd></button>
+        <span class="note">記得打開喇叭：有背景音樂、螺旋槳聲、風聲、溪水聲、警告音和中文語音提示。錄影點在山的後面，飛太低會被山擋住訊號。</span>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="paused" hidden>
+    <div class="card">
+      <div class="eyebrow">暫停</div>
+      <h2>休息一下</h2>
+      <div class="row">
+        <button class="cta" id="bResume" type="button">繼續飛行 <kbd class="hide-touch">P</kbd></button>
+        <button class="ghost" id="bRestart" type="button">重新開始</button>
+        <button class="ghost" id="bPauseAlbum" type="button">看相簿</button>
+      </div>
+      <div class="vols">
+        <h4>音量</h4>
+        <div class="vol"><label for="volMusic">背景音樂</label><input type="range" id="volMusic" min="0" max="100" step="5"><output id="volMusicV" for="volMusic">80</output></div>
+        <div class="vol"><label for="volDrone">無人機聲音</label><input type="range" id="volDrone" min="0" max="100" step="5"><output id="volDroneV" for="volDrone">35</output></div>
+      </div>
+      <div class="ctrls" id="ctrlHelp2"></div>
+    </div>
+  </div>
+
+  <div class="screen" id="album" hidden>
+    <div class="card album">
+      <div class="albumhead">
+        <div><div class="eyebrow" style="color:var(--spot)">相簿</div><h2>空拍照片</h2><p class="note" id="albumCount" style="margin-top:6px">0 / 7 個景點</p></div>
+        <button class="cta" id="bAlbumClose" type="button">回到遊戲</button>
+      </div>
+      <ul class="spotlist" id="spotList"></ul>
+      <h4 style="margin:4px 0 0;font-size:13px;color:var(--muted);letter-spacing:.06em">所有照片（點一下看大圖）</h4>
+      <div class="thumbs" id="thumbs"></div>
+      <p class="note" id="albumEmpty">還沒有照片。飛到青色的景點附近，把機頭對準它，按「拍照」或 F 鍵。</p>
+    </div>
+  </div>
+  <div class="screen" id="viewer" hidden>
+    <figure><img id="viewerImg" alt="照片"><figcaption id="viewerCap"></figcaption><button class="cta" id="bViewerClose" type="button">關閉</button></figure>
+  </div>
+
+  <div class="screen" id="ended" hidden>
+    <div class="card">
+      <div class="eyebrow" id="endEyebrow">任務結果</div>
+      <h2 id="endTitle">任務完成！</h2>
+      <p id="endWhy"></p>
+      <div class="stats">
+        <div><em>飛行時間</em><b id="sTime">0:00</b></div>
+        <div><em>剩餘電量</em><b id="sBatt">0%</b></div>
+        <div><em>失聯次數</em><b id="sLost">0</b></div>
+        <div><em>最大風速</em><b id="sWind">0 m/s</b></div>
+      </div>
+      <div class="endphotos" id="endPhotos" hidden>
+        <em>拍到的景點 <b id="sPhotos">0 / 7</b></em>
+        <div class="strip" id="endStrip"></div>
+      </div>
+      <ul class="stars" id="stars">
+        <li>錄到湖景並平安降落</li>
+        <li>降落時電量還有 25% 以上</li>
+        <li>全程沒有因為斷訊被迫返航</li>
+      </ul>
+      <div class="row">
+        <button class="cta" id="bAgain" type="button">再飛一次 <kbd class="hide-touch">R</kbd></button>
+        <button class="ghost" id="bEndAlbum" type="button">看相簿</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="src/core.js"></script>
+<script src="src/game.js"></script>
+</body>
+</html>
