@@ -20,9 +20,10 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="app">
+<div id="app" class="picking">
   <div id="gl" aria-hidden="true"></div>
   <canvas id="static" width="160" height="90" aria-hidden="true"></canvas>
+  <div class="ov" id="dust"></div>
   <div class="ov" id="vignette"></div>
   <div class="ov" id="viewfinder" hidden><i></i><i></i><i></i><i></i><span></span></div>
   <div class="ov" id="flash"></div>
@@ -83,15 +84,61 @@
   <div class="stick" id="stickL" hidden><div class="base" id="baseL"><div class="knob" id="knobL"></div><span class="cap">上升・下降</span><span class="u">上升</span><span class="d">下降</span><span class="l dim">左轉</span><span class="r dim">右轉</span></div></div>
   <div class="stick" id="stickR" hidden><div class="base" id="baseR"><div class="knob" id="knobR"></div><span class="cap">前後左右</span><span class="u">前進</span><span class="d">後退</span><span class="l">左移</span><span class="r">右移</span></div></div>
 
-  <div class="screen" id="loading"><div class="card"><div class="spin"></div><p>正在產生山區地形⋯⋯</p></div></div>
+  <div class="screen" id="pick">
+    <div class="card pick">
+      <div class="eyebrow">無人機空拍遊戲</div>
+      <h1>要去哪裡飛？</h1>
+      <div class="scenes">
+        <button class="scene" type="button" data-scene="valley">
+          <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs><linearGradient id="skyV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb6dd"/><stop offset="1" stop-color="#e6edf2"/></linearGradient></defs>
+            <rect width="320" height="160" fill="url(#skyV)"/>
+            <path d="M0 98 L46 46 L70 66 L104 24 L142 72 L176 38 L214 80 L250 34 L292 70 L320 52 L320 160 L0 160Z" fill="#cdd3d8"/>
+            <path d="M104 24 L116 40 L106 38 L98 46 L92 38Z M250 34 L262 50 L252 47 L244 54 L238 47Z" fill="#fbfdff"/>
+            <path d="M0 116 L40 82 L78 108 L118 76 L160 112 L206 86 L248 112 L290 84 L320 100 L320 160 L0 160Z" fill="#a9b0b6"/>
+            <ellipse cx="164" cy="130" rx="58" ry="11" fill="#5a8fa6"/>
+            <path d="M0 160 L0 128 L60 118 L104 132 L222 132 L262 120 L320 126 L320 160Z" fill="#7d8a52"/>
+            <g fill="#56702a"><path d="M24 132 l7 -22 l7 22z"/><path d="M38 136 l8 -26 l8 26z"/><path d="M262 130 l7 -22 l7 22z"/><path d="M276 136 l8 -27 l8 27z"/><path d="M90 140 l6 -18 l6 18z"/><path d="M228 142 l6 -18 l6 18z"/></g>
+            <g transform="translate(150 54)" fill="#fff"><rect x="-12" y="-1.5" width="24" height="3" rx="1.5" transform="rotate(28)"/><rect x="-12" y="-1.5" width="24" height="3" rx="1.5" transform="rotate(-28)"/><ellipse rx="6" ry="3.6"/><ellipse cx="-10.5" cy="-5.5" rx="5" ry="1.2" opacity=".8"/><ellipse cx="10.5" cy="-5.5" rx="5" ry="1.2" opacity=".8"/><ellipse cx="-10.5" cy="5.5" rx="5" ry="1.2" opacity=".8"/><ellipse cx="10.5" cy="5.5" rx="5" ry="1.2" opacity=".8"/></g>
+          </svg>
+          <div class="sb"><b>山谷空拍</b><span>沿著溪谷飛進高山，到山中湖上空錄影。吊橋、瀑布、千年神木等你來拍。</span><em>強風・電量・訊號</em></div>
+          <i class="tag">上次玩的</i>
+        </button>
+        <button class="scene" type="button" data-scene="desert">
+          <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs><linearGradient id="skyD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fa6dc"/><stop offset="1" stop-color="#f4dfbd"/></linearGradient></defs>
+            <rect width="320" height="160" fill="url(#skyD)"/>
+            <circle cx="262" cy="34" r="14" fill="#fff6dc"/>
+            <path d="M0 92 L320 86 L320 160 L0 160Z" fill="#e6b47a"/>
+            <path d="M0 64 L96 64 L104 70 L104 160 L0 160Z" fill="#c8743f"/>
+            <path d="M0 76 H104 M0 90 H104 M0 104 H104 M0 120 H104" stroke="#e3a66b" stroke-width="5"/>
+            <path d="M216 60 L320 60 L320 160 L208 160 L210 70Z" fill="#bd6a39"/>
+            <path d="M210 74 H320 M209 88 H320 M209 103 H320 M208 119 H320" stroke="#dc9a5f" stroke-width="5"/>
+            <path d="M104 160 L104 118 Q150 100 208 116 L208 160Z" fill="#efc48e"/>
+            <path d="M118 160 Q138 132 166 140 Q186 128 200 160Z" fill="#f6d4a2"/>
+            <ellipse cx="160" cy="124" rx="20" ry="4" fill="#5fa3a8"/>
+            <g stroke="#7a5532" stroke-width="2.6" fill="none"><path d="M142 124 q2 -14 -2 -24"/><path d="M178 124 q-2 -12 3 -21"/></g>
+            <g fill="#5d8a2c"><path d="M140 100 q-12 -2 -16 6 q8 -6 16 -6z M140 100 q10 -8 18 -2 q-10 -3 -18 2z M140 100 q-4 -10 4 -14 q-2 7 -4 14z M140 100 q-14 4 -14 12 q4 -8 14 -12z M140 100 q14 2 14 10 q-4 -7 -14 -10z"/><path d="M181 103 q-12 -2 -16 6 q8 -6 16 -6z M181 103 q10 -8 18 -2 q-10 -3 -18 2z M181 103 q-4 -10 4 -14 q-2 7 -4 14z M181 103 q14 2 14 10 q-4 -7 -14 -10z"/></g>
+            <g fill="#f4e2c4" opacity=".75"><circle cx="152" cy="80" r="9"/><circle cx="164" cy="76" r="11"/><circle cx="176" cy="81" r="8"/></g>
+            <g transform="translate(164 62)" fill="#fff"><rect x="-12" y="-1.5" width="24" height="3" rx="1.5" transform="rotate(28)"/><rect x="-12" y="-1.5" width="24" height="3" rx="1.5" transform="rotate(-28)"/><ellipse rx="6" ry="3.6"/><ellipse cx="-10.5" cy="-5.5" rx="5" ry="1.2" opacity=".8"/><ellipse cx="10.5" cy="-5.5" rx="5" ry="1.2" opacity=".8"/><ellipse cx="-10.5" cy="5.5" rx="5" ry="1.2" opacity=".8"/><ellipse cx="10.5" cy="5.5" rx="5" ry="1.2" opacity=".8"/></g>
+          </svg>
+          <div class="sb"><b>沙漠空拍</b><span>穿過沙牆峽谷，飛到綠洲上空錄影。飛低會揚起沙塵，撞到沙牆，牆會倒下來。</span><em>揚沙・沙牆崩塌・強風・電量・訊號</em></div>
+          <i class="tag">上次玩的</i>
+        </button>
+      </div>
+      <p class="note">玩到一半想換地方，可以在暫停畫面按「換場景」。</p>
+    </div>
+  </div>
+
+  <div class="screen" id="loading" hidden><div class="card"><div class="spin"></div><p id="loadingTxt">正在產生山區地形⋯⋯</p></div></div>
 
   <div class="screen" id="start" hidden>
     <div class="card start">
       <div class="col">
       <div class="eyebrow">無人機空拍遊戲</div>
-      <h1>山谷空拍</h1>
-      <p>從風景區入口的起飛點出發，沿著溪谷往北飛，到山谷深處的山中湖上空錄一段 6 秒的空拍影片，再飛回起飛點降落。羅盤和地圖上的<b style="color:var(--target)">橘色記號</b>就是錄影點。沿途還有 7 個<b style="color:var(--spot)">青色的拍照景點</b>（吊橋、瀑布、神木、湖畔涼亭⋯⋯），飛過去按「拍照」把它們收進相簿。</p>
-      <div class="hz">
+      <h1 id="startTitle">山谷空拍</h1>
+      <p id="startIntro">從風景區入口的起飛點出發，沿著溪谷往北飛，到山谷深處的山中湖上空錄一段 6 秒的空拍影片，再飛回起飛點降落。羅盤和地圖上的<b style="color:var(--target)">橘色記號</b>就是錄影點。沿途還有 7 個<b style="color:var(--spot)">青色的拍照景點</b>（吊橋、瀑布、神木、湖畔涼亭⋯⋯），飛過去按「拍照」把它們收進相簿。</p>
+      <div class="hz" id="startHz">
         <div style="--c:var(--sky)"><b>強風</b><span>越高風越大，飛機會被吹偏，也更耗電。</span></div>
         <div style="--c:var(--warn)"><b>電量</b><span>電量用完馬達就停，飛機直接掉下來。電量條上的白線是「飛回家需要的電」。</span></div>
         <div style="--c:var(--crit)"><b>訊號</b><span>山擋在你和飛機中間就會斷訊，斷線 2.5 秒飛機會自動返航。</span></div>
@@ -125,7 +172,7 @@
       </div>
       <div class="row">
         <button class="cta" id="bStart" type="button">開始飛行 <kbd class="hide-touch">Enter</kbd></button>
-        <span class="note">記得打開喇叭：有背景音樂、螺旋槳聲、風聲、溪水聲、警告音和中文語音提示。錄影點在山的後面，飛太低會被山擋住訊號。</span>
+        <span class="note" id="startNote">記得打開喇叭：有背景音樂、螺旋槳聲、風聲、溪水聲、警告音和中文語音提示。錄影點在山的後面，飛太低會被山擋住訊號。</span>
       </div>
       </div>
     </div>
@@ -139,6 +186,7 @@
         <button class="cta" id="bResume" type="button">繼續飛行 <kbd class="hide-touch">P</kbd></button>
         <button class="ghost" id="bRestart" type="button">重新開始</button>
         <button class="ghost" id="bPauseAlbum" type="button">看相簿</button>
+        <button class="ghost" id="bScene" type="button">換場景</button>
       </div>
       <div class="vols">
         <h4>音量</h4>
@@ -181,13 +229,14 @@
         <div class="strip" id="endStrip"></div>
       </div>
       <ul class="stars" id="stars">
-        <li>錄到湖景並平安降落</li>
+        <li id="star1">錄到湖景並平安降落</li>
         <li>降落時電量還有 25% 以上</li>
         <li>全程沒有因為斷訊被迫返航</li>
       </ul>
       <div class="row">
         <button class="cta" id="bAgain" type="button">再飛一次 <kbd class="hide-touch">R</kbd></button>
         <button class="ghost" id="bEndAlbum" type="button">看相簿</button>
+        <button class="ghost" id="bEndScene" type="button">換場景</button>
       </div>
     </div>
   </div>
@@ -195,6 +244,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="src/core.js"></script>
+<script src="src/desert.js"></script>
 <script src="src/game.js"></script>
 </body>
 </html>

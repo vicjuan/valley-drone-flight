@@ -15,10 +15,67 @@
   function fail(msg) {
     $('loading').innerHTML = '<div class="card"><p>' + msg + '</p></div>';
   }
-  setTimeout(init, 40);
 
-  function init() {
+  /* ================= words that differ between the two scenes ================= */
+  const TEXTS = {
+    valley: {
+      title: '山谷空拍', loading: '正在產生山區地形⋯⋯',
+      intro: '從風景區入口的起飛點出發，沿著溪谷往北飛，到山谷深處的山中湖上空錄一段 6 秒的空拍影片，再飛回起飛點降落。羅盤和地圖上的<b style="color:var(--target)">橘色記號</b>就是錄影點。沿途還有 7 個<b style="color:var(--spot)">青色的拍照景點</b>（吊橋、瀑布、神木、湖畔涼亭⋯⋯），飛過去按「拍照」把它們收進相簿。',
+      hz: [['var(--sky)', '強風', '越高風越大，飛機會被吹偏，也更耗電。'], ['var(--warn)', '電量', '電量用完馬達就停，飛機直接掉下來。電量條上的白線是「飛回家需要的電」。'], ['var(--crit)', '訊號', '山擋在你和飛機中間就會斷訊，斷線 2.5 秒飛機會自動返航。']],
+      note: '記得打開喇叭：有背景音樂、螺旋槳聲、風聲、溪水聲、警告音和中文語音提示。錄影點在山的後面，飛太低會被山擋住訊號。',
+      steps: ['起飛', '飛到北方山谷的錄影點', '在山中湖上空錄影 6 秒', '飛回起飛點降落'],
+      above: '離水面', blocker: '山', water: '湖', star1: '錄到湖景並平安降落',
+      takeoff: '起飛了！往北邊的山谷飛，跟著羅盤上的橘色記號。',
+      weak: '訊號變弱了：山擋在你和飛機中間。飛高一點，訊號就會回來。',
+      win: '你錄到了山中湖的空拍影片，也把飛機帶回起飛點。',
+      lostTip: '途中斷訊過，飛高一點、讓山不要擋在你和飛機中間，就不會被迫返航。',
+    },
+    desert: {
+      title: '沙漠空拍', loading: '正在產生沙漠地形⋯⋯',
+      intro: '從沙漠營地起飛，往北飛進沙牆峽谷，到峽谷盡頭的綠洲上空錄一段 6 秒的空拍影片，再飛回營地降落。羅盤和地圖上的<b style="color:var(--target)">橘色記號</b>就是錄影點。沿途還有 7 個<b style="color:var(--spot)">青色的拍照景點</b>（駱駝商隊、沙岩拱門、古城遺跡、鳴沙山⋯⋯），飛過去按「拍照」把它們收進相簿。',
+      hz: [['#e8b46a', '揚沙', '飛得越低，螺旋槳把沙子吹得越高，畫面會變朦朧。沙地很軟，碰到也不會墜機。'], ['#d9774a', '沙牆會倒', '峽谷的牆是沙做的，撞到或貼太近就會崩塌。飛機會被彈開，繼續飛就好。'], ['var(--sky)', '強風・電量', '越高風越大，會被吹偏。電量用完馬達就停，這是沙漠裡唯一會讓任務結束的狀況。'], ['var(--crit)', '訊號', '綠洲藏在彎道後面，沙牆擋住就會斷訊，斷線 2.5 秒會自動返航。']],
+      note: '記得打開喇叭：有背景音樂、螺旋槳聲、揚沙聲、沙牆崩塌聲和中文語音提示。綠洲在峽谷彎道後面，飛太低會被沙牆擋住訊號。',
+      steps: ['起飛', '穿過峽谷飛到綠洲', '在綠洲上空錄影 6 秒', '飛回營地降落'],
+      above: '離地面', blocker: '沙牆', water: '水池', star1: '錄到綠洲並平安降落',
+      takeoff: '起飛了！往北邊的峽谷飛，跟著羅盤上的橘色記號。飛低一點，看看沙子被吹起來。',
+      weak: '訊號變弱了：沙牆擋在你和飛機中間。飛高一點，訊號就會回來。',
+      win: '你錄到了綠洲的空拍影片，也把飛機帶回營地。',
+      lostTip: '途中斷訊過，飛高一點、讓沙牆不要擋在你和飛機中間，就不會被迫返航。',
+    },
+  };
+  function applyTexts(T) {
+    document.title = T.title;
+    $('startTitle').textContent = T.title; $('startIntro').innerHTML = T.intro; $('startNote').textContent = T.note;
+    $('startHz').innerHTML = T.hz.map(([c, b, t]) => `<div style="--c:${c}"><b>${b}</b><span>${t}</span></div>`).join('');
+    [...$('steps').children].forEach((li, i) => { li.querySelector('span').textContent = T.steps[i]; });
+    $('star1').textContent = T.star1;
+  }
+
+  /* ================= pick a scene first, then build it ================= */
+  let chosen = false;
+  function choose(id) {
+    if (chosen) return; chosen = true;
+    store.set('drone-scene', id);
+    $('pick').hidden = true;
+    $('loadingTxt').textContent = (TEXTS[id] || TEXTS.valley).loading;
+    $('loading').hidden = false;
+    setTimeout(() => init(id), 40);
+  }
+  (function showPicker() {
+    if (!window.THREE) { $('pick').hidden = true; $('loading').hidden = false; fail('3D 引擎沒有載入成功，請重新整理頁面再試一次。'); return; }
+    const last = store.get('drone-scene');
+    document.querySelectorAll('#pick .scene').forEach(b => { b.addEventListener('click', () => choose(b.dataset.scene)); b.classList.toggle('last', b.dataset.scene === last); });
+    $('pick').hidden = false;
+    const f = document.querySelector(`#pick .scene[data-scene="${last}"]`) || document.querySelector('#pick .scene');
+    try { f.focus({ preventScroll: true }); } catch (_) { /* old browser */ }
+  })();
+
+  function init(sceneId) {
     if (!window.THREE) { fail('3D 引擎沒有載入成功，請重新整理頁面再試一次。'); return; }
+    setScene(sceneId);
+    const DESERT = SCENE_ID === 'desert', TXT = TEXTS[SCENE_ID];
+    applyTexts(TXT);
+    app.classList.remove('picking');
     let renderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
     catch (e) { fail('這台裝置的瀏覽器無法顯示 3D 畫面，請換用電腦或較新的手機瀏覽器開啟。'); return; }
@@ -33,11 +90,12 @@
     const V3 = THREE.Vector3;
 
     /* ================= world data ================= */
-    const G = buildGrid(small ? 320 : 512);
+    const G = DESERT ? buildGrid(small ? 340 : 560) : buildGrid(small ? 320 : 512);
     buildTrees(small ? 1700 : 3300, 11);
 
     /* ================= photo spots ================= */
     const SPOTS = [];
+    if (!DESERT) {
     const vNear = (x, z) => { let b = 0, bd = 1e18; VALLEY.forEach((p, i) => { const d = (p[0] - x) ** 2 + (p[1] - z) ** 2; if (d < bd) { bd = d; b = i; } }); return b; };
     const vTan = i => { const a = VALLEY[Math.max(0, i - 1)], b = VALLEY[Math.min(VALLEY.length - 1, i + 1)]; const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l]; };
     const reach = (c, nn, sd, need) => { let k = 8; for (; k < 200; k += 2) if (terrainH(c[0] + nn[0] * sd * k, c[1] + nn[1] * sd * k) >= c[2] + need) break; return k; };
@@ -84,7 +142,8 @@
       for (let x = -460; x <= -100; x += 6) for (let z = -820; z <= -360; z += 6) { const h = terrainH(x, z); if (h > best) { best = h; bp = [x, z]; } }
       SPOTS.push({ id: 'station', name: '山頂氣象站', desc: '山頂上的無人氣象站，量風速和雨量。上面風很大。', x: bp[0], z: bp[1], y: best, fy: best + 5, range: 290 }); }
     SPOTS.forEach(sp => { sp.got = false; });
-    const SUN = new V3(-0.72, 0.56, 0.41).normalize();
+    }
+    const SUN = DESERT ? new V3(-0.6, 0.6, 0.52).normalize() : new V3(-0.72, 0.56, 0.41).normalize();
 
     // bake sun visibility and crevice darkening on the height grid
     const N = G.N, n = G.n, H = G.h;
@@ -179,8 +238,8 @@
     /* ================= scene ================= */
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(62, 16 / 9, 0.15, 17000);
-    const FOG = new THREE.Color(0.83, 0.865, 0.9), FOG_D = 0.00024;
-    const SKY_TOP = new THREE.Color(0.55, 0.69, 0.84), SUN_COL = new THREE.Color(1.0, 0.975, 0.93);
+    const FOG = DESERT ? new THREE.Color(0.93, 0.85, 0.72) : new THREE.Color(0.83, 0.865, 0.9), FOG_D = DESERT ? 0.0003 : 0.00024;
+    const SKY_TOP = DESERT ? new THREE.Color(0.4, 0.62, 0.88) : new THREE.Color(0.55, 0.69, 0.84), SUN_COL = DESERT ? new THREE.Color(1.0, 0.94, 0.84) : new THREE.Color(1.0, 0.975, 0.93);
 
     const sky = new THREE.Mesh(new THREE.SphereGeometry(15000, 32, 16), new THREE.ShaderMaterial({
       uniforms: { top: { value: SKY_TOP }, bot: { value: FOG }, sunDir: { value: SUN } },
@@ -193,19 +252,28 @@
     }));
     sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
 
-    scene.add(new THREE.HemisphereLight(0xdfe8f0, 0x8d8b7c, 0.78));
-    const dirLight = new THREE.DirectionalLight(0xfff8ee, 0.78); dirLight.position.copy(SUN).multiplyScalar(100); scene.add(dirLight);
+    scene.add(DESERT ? new THREE.HemisphereLight(0xe9e6dd, 0xb08a5c, 0.8) : new THREE.HemisphereLight(0xdfe8f0, 0x8d8b7c, 0.78));
+    const dirLight = new THREE.DirectionalLight(DESERT ? 0xfff1dc : 0xfff8ee, DESERT ? 0.85 : 0.78); dirLight.position.copy(SUN).multiplyScalar(100); scene.add(dirLight);
+    const std = (c, r = 0.6, m = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
+    const add = (geo, mat, x, y, z, parent) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); (parent || scene).add(o); return o; };
+    let fx = null; // the desert's sand, collapsing walls and ruins
+    if (DESERT) {
+      fx = DesertWorld({ scene, add, std, small, SUN, SPOTS, FOG, FOG_D, renderer,
+        sfx: { collapse: p => SFX.collapse(p), thud: p => SFX.thud(p), bump: p => SFX.bump(p), bricks: k => SFX.bricks(k), splash: () => SFX.splash() },
+        onBricks: () => { if (!flags.bricks) say('古城的牆倒了'); once('bricks', '把古城的土磚牆撞倒了！', 3); } });
+      fx.placeSpots();
+    }
 
     /* ---------- terrain shader ---------- */
     const terrainUniforms = {
       uRock: { value: rockTex }, uSun: { value: SUN }, uSunCol: { value: SUN_COL },
-      uSky: { value: new THREE.Color(0.66, 0.71, 0.78) }, uGround: { value: new THREE.Color(0.42, 0.41, 0.38) },
+      uSky: { value: DESERT ? new THREE.Color(0.7, 0.74, 0.8) : new THREE.Color(0.66, 0.71, 0.78) }, uGround: { value: DESERT ? new THREE.Color(0.55, 0.45, 0.33) : new THREE.Color(0.42, 0.41, 0.38) },
       uFog: { value: FOG }, uFogD: { value: FOG_D }, uCam: { value: new V3() }, uDrone: { value: new THREE.Vector4(0, -999, 0, 0) },
       uRoad: { value: ROAD.map(p => new THREE.Vector2(p[0], p[1])) }, uRoadS: { value: [] },
     };
     { let s = 0; terrainUniforms.uRoadS.value.push(0); for (let i = 1; i < ROAD.length; i++) { s += Math.hypot(ROAD[i][0] - ROAD[i - 1][0], ROAD[i][1] - ROAD[i - 1][1]); terrainUniforms.uRoadS.value.push(s); } }
     const NR = ROAD.length;
-    const terrainMat = new THREE.ShaderMaterial({
+    const terrainMat = DESERT ? fx.material(terrainUniforms) : new THREE.ShaderMaterial({
       uniforms: terrainUniforms,
       vertexShader: `
         attribute vec3 aTint; attribute vec2 aShade;
@@ -264,6 +332,7 @@
     });
 
     function tintAt(x, z, h, sl, out) {
+      if (DESERT) { fx.tint(x, z, h, sl, out); return; }
       const stand = fbm(x * 0.0042 + 1.9, z * 0.0042 - 6.1, 3) + 0.45 * gnoise(x * 0.013 + 0.5, z * 0.013 + 2.2);
       const flat = 1 - smooth(0.18, 0.55, sl), low = 1 - smooth(180, 330, h);
       const grass = clamp01(flat * low * (0.25 + 0.75 * smooth(0.0, 0.45, stand)));
@@ -339,22 +408,24 @@
       geo.computeBoundingSphere();
       return new THREE.Mesh(geo, terrainMat);
     }
-    scene.add(buildInner());
+    const innerMesh = buildInner();
+    scene.add(innerMesh);
     scene.add(buildOuter());
+    if (fx) fx.attachTerrain(innerMesh.geometry, vis, ao);
 
     /* ---------- water: lake and stream ---------- */
     const waterMat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uCam: terrainUniforms.uCam, uSun: { value: SUN }, uFog: { value: FOG }, uFogD: { value: FOG_D }, uSkyC: { value: new THREE.Color(0.8, 0.85, 0.9) } },
+      uniforms: { uTime: { value: 0 }, uCam: terrainUniforms.uCam, uSun: { value: SUN }, uFog: { value: FOG }, uFogD: { value: FOG_D }, uSkyC: { value: DESERT ? new THREE.Color(0.72, 0.84, 0.92) : new THREE.Color(0.8, 0.85, 0.9) }, uDeep: { value: DESERT ? new THREE.Color(0.1, 0.33, 0.3) : new THREE.Color(0.2, 0.33, 0.35) } },
       vertexShader: 'varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader: `
-        uniform float uTime; uniform vec3 uCam, uSun, uFog, uSkyC; uniform float uFogD; varying vec3 vPos;
+        uniform float uTime; uniform vec3 uCam, uSun, uFog, uSkyC, uDeep; uniform float uFogD; varying vec3 vPos;
         void main(){
           vec2 p = vPos.xz;
           vec3 n = normalize(vec3(0.07 * (sin(p.x * 0.31 + uTime * 1.3) + sin(p.y * 0.47 - uTime * 0.9) * 0.6 + sin((p.x + p.y) * 1.1 + uTime * 2.1) * 0.3), 1.0,
                                   0.07 * (cos(p.y * 0.29 + uTime * 1.1) + sin(p.x * 0.53 + uTime * 0.7) * 0.6 + cos((p.x - p.y) * 0.9 - uTime * 1.7) * 0.3)));
           vec3 v = normalize(uCam - vPos); float dist = length(uCam - vPos);
           float fres = 0.05 + 0.95 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
-          vec3 col = mix(vec3(0.2, 0.33, 0.35), uSkyC, fres);
+          vec3 col = mix(uDeep, uSkyC, fres);
           vec3 h = normalize(uSun + v); col += vec3(1.0, 0.97, 0.9) * pow(max(dot(n, h), 0.0), 140.0) * 0.9;
           col = mix(col, uFog, 1.0 - exp(-pow(dist * uFogD, 2.0)));
           gl_FragColor = vec4(col, 1.0);
@@ -382,7 +453,7 @@
     })();
 
     /* ---------- spruces: trunk and four drooping tiers, instanced ---------- */
-    const TL = TREES.filter(t => !t.giant), T = TL.length;
+    const TL = DESERT ? [] : TREES.filter(t => !t.giant), T = TL.length;
     const tierGeo = (r, h, y) => { const g = new THREE.ConeGeometry(r, h, 7, 1); g.translate(0, y + h / 2, 0); return g; };
     const parts = [
       { g: (function () { const g = new THREE.CylinderGeometry(0.022, 0.035, 0.22, 5); g.translate(0, 0.11, 0); return g; })(), m: new THREE.MeshLambertMaterial({ color: 0x5b4733 }), shade: 0.9 },
@@ -405,11 +476,9 @@
         else m.setColorAt(i, tc.copy(leafA).lerp(leafB, clamp01(t.c * 0.85 + pi * 0.04)).multiplyScalar(lit * parts[pi].shade));
       });
     });
-    treeMeshes.forEach(m => { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; });
+    treeMeshes.forEach(m => { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; m.visible = T > 0; });
 
     /* ---------- home pad, pilot ---------- */
-    const std = (c, r = 0.6, m = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
-    const add = (geo, mat, x, y, z, parent) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); (parent || scene).add(o); return o; };
     add(new THREE.CylinderGeometry(PAD_R + 0.15, PAD_R + 0.3, PAD_TOP, 40), std(0xd3d8dc, 0.85), HOME.x, PAD_TOP / 2, HOME.z);
     add(new THREE.CylinderGeometry(PAD_R - 0.25, PAD_R - 0.25, PAD_TOP + 0.02, 40), std(0x34404a, 0.85), HOME.x, PAD_TOP / 2 + 0.005, HOME.z);
     const hm = std(0xf3f6f8, 0.6);
@@ -429,7 +498,8 @@
     /* ---------- photo-spot landmarks ---------- */
     const SPOT_COLOR = 0x46d3c5;
     let fallMat = null;
-    (function buildLandmarks() {
+    if (fx) fx.buildAll();
+    if (!DESERT) (function buildLandmarks() {
       const rng = (function (a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })(77);
       const prism = (w, h, d, mat) => { const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(0, h); sh.lineTo(-w / 2, 0); const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d / 2); return new THREE.Mesh(g, mat); };
       for (const sp of SPOTS) {
@@ -631,7 +701,7 @@
     const DROPS = []; for (let i = 0; i < 50; i++) { const a = Math.random() * 6.283, s = 1 + Math.random() * 3.5; DROPS.push({ vx: Math.cos(a) * s, vz: Math.sin(a) * s, vy: 3 + Math.random() * 6, r: 0.08 + Math.random() * 0.12 }); }
 
     /* ================= minimap background ================= */
-    const MAPV = { x0: -800, x1: 800, z0: -1650, z1: 250 }; // what the map shows
+    const MAPV = DESERT ? { x0: -480, x1: 560, z0: -1350, z1: 150 } : { x0: -800, x1: 800, z0: -1650, z1: 250 }; // what the map shows
     const mapBg = (function () {
       const S = 336, c = document.createElement('canvas'); c.width = c.height = S;
       const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
@@ -644,11 +714,12 @@
         const l = Math.hypot(gx, 1, gz), sh = clamp((-gx * SUN.x + SUN.y - gz * SUN.z) / l, 0, 1);
         let v = 0.25 + 0.6 * sh + 0.15 * clamp(h / 600, 0, 1);
         let r = v, gg = v, b = v;
-        if (h < LAKE.level + 0.5 && Math.hypot(wx - LAKE.x, wz - LAKE.z) < LAKE.r * 2) { r = 0.3; gg = 0.48; b = 0.58; }
+        if (DESERT) { const o = [0, 0, 0]; fx.mapColor(wx, wz, h, Math.hypot(gx, gz), sh, o); r = o[0]; gg = o[1]; b = o[2]; }
+        else if (h < LAKE.level + 0.5 && Math.hypot(wx - LAKE.x, wz - LAKE.z) < LAKE.r * 2) { r = 0.3; gg = 0.48; b = 0.58; }
         const i = (y * S + x) * 4; d[i] = r * 235; d[i + 1] = gg * 238; d[i + 2] = b * 240; d[i + 3] = 255;
       }
       g.putImageData(img, 0, 0);
-      g.fillStyle = 'rgba(140,165,55,0.85)';
+      g.fillStyle = DESERT ? 'rgba(70,120,40,0.95)' : 'rgba(140,165,55,0.85)';
       for (const t of TREES) {
         const px = ((t.x - cx) / span + 0.5) * S, py = ((t.z - cz) / span + 0.5) * S;
         if (px >= 0 && py >= 0 && px < S && py < S) g.fillRect(px - 0.75, py - 0.75, 1.5, 1.5);
@@ -704,7 +775,7 @@
       const v = spotView(best);
       if (v.why === 'far') return `最近的景點「${best.name}」還有 ${Math.round(bd / 10) * 10} 公尺，再靠近一點（${best.range} 公尺內）。`;
       if (v.why === 'aim') return `沒有對準「${best.name}」：把機頭轉向它再拍。按 C 可以看相機畫面。`;
-      return `「${best.name}」被山擋住了，飛高一點或換個角度再拍。`;
+      return `「${best.name}」被${TXT.blocker}擋住了，飛高一點或換個角度再拍。`;
     }
     function takePhoto() {
       if (state !== 'play' || drone.crashed) return;
@@ -790,6 +861,7 @@
     $('bEndAlbum').addEventListener('click', openAlbum);
 
     /* ================= game state ================= */
+    let fxState = null;
     let drone = newDrone(), mission = newMission(), rth = null, simT = 0, lostT = 0, sig = { q: 1, worst: 99, block: null, dist: 0 };
     let state = 'loading'; // loading, title, play, paused, ended
     let camMode = 0; const CAM_NAMES = ['追蹤視角', '機載鏡頭', '操作員視角'];
@@ -804,6 +876,7 @@
       ud.up = false; ud.autoUp = null; ud.autoLand = false;
       camSnap = true; beaconMat.uniforms.uCol.value.setRGB(1.0, 0.6, 0.24); pillarMat.color.setHex(0xff9a3c); homePillar.visible = false;
       $('lblTarget').classList.remove('done'); $('lblTarget').textContent = '錄影點';
+      if (fx) fx.reset();
       setAlert(null); toast('');
     }
 
@@ -943,6 +1016,7 @@
         const wash = ac.createGain(); wash.gain.value = 0; const washF = filt('bandpass', 1100, 0.6); loop(white).connect(washF); washF.connect(wash); wash.connect(master);
         const wind = ac.createGain(); wind.gain.value = 0; const windF = filt('lowpass', 500, 0.5); loop(brown).connect(windF); windF.connect(wind); wind.connect(master);
         const gust = ac.createOscillator(); gust.frequency.value = 0.23; const gustG = ac.createGain(); gustG.gain.value = 180; gust.connect(gustG); gustG.connect(windF.frequency); gust.start();
+        const sand = ac.createGain(); sand.gain.value = 0; const sandF = filt('bandpass', 2600, 0.5); loop(white).connect(sandF); sandF.connect(sand); sand.connect(master);
         const water = ac.createGain(); water.gain.value = 0; const waterF = filt('bandpass', 2300, 0.45); loop(white).connect(waterF); waterF.connect(water); water.connect(master);
         const ripple = ac.createOscillator(); ripple.frequency.value = 5.3; const rippleG = ac.createGain(); rippleG.gain.value = 600; ripple.connect(rippleG); rippleG.connect(waterF.frequency); ripple.start();
         // music bus: dry + a small generated reverb + an echo for the plucks and the tune
@@ -957,7 +1031,7 @@
         const padF = filt('lowpass', 1200, 0.6); padF.connect(bus);
         const meter = ac.createAnalyser(); meter.fftSize = 2048; musicOut.connect(meter);
         const meterAll = ac.createAnalyser(); meterAll.fftSize = 2048; comp.connect(meterAll);
-        audio = { ac, master, motorBus, oscs, whine, lfo, wash, wind, windF, water, white, music: { out: musicOut, bus, echo, padF, meter }, meterAll };
+        audio = { ac, master, motorBus, oscs, whine, lfo, wash, wind, windF, water, sand, white, music: { out: musicOut, bus, echo, padF, meter }, meterAll };
         musicNext = ac.currentTime + 0.1;
       } catch (e) { audio = null; }
     }
@@ -1002,20 +1076,31 @@
       click: () => tone(1200, 0.035, { vol: 0.08 }),
       shutter: () => { noiseHit(0.05, 4000, 0.5, 'highpass'); tone(2200, 0.03, { vol: 0.12, type: 'square' }); setTimeout(() => noiseHit(0.06, 2500, 0.35, 'bandpass'), 70); },
       spot: () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.22, { vol: 0.17, delay: i * 0.08, type: 'sine' })); },
+      // desert: a sand wall slumping, a thump into the sand, a bump, mud bricks tumbling
+      collapse: p => { noiseHit(1.9, 150, 0.9 * p, 'lowpass'); noiseHit(1.5, 900, 0.32 * p, 'bandpass'); tone(68, 1.2, { type: 'sine', vol: 0.25 * p, to: 38 }); setTimeout(() => noiseHit(1.3, 2400, 0.16 * p, 'bandpass'), 260); },
+      thud: p => { noiseHit(0.35, 520, 0.55 * p, 'lowpass'); noiseHit(0.55, 2600, 0.22 * p, 'bandpass'); },
+      bump: p => { noiseHit(0.12, 900, 0.4 * (p || 1), 'lowpass'); tone(180, 0.1, { type: 'triangle', vol: 0.12 * (p || 1) }); },
+      bricks: k => { const m = Math.min(8, 2 + (k >> 2)); for (let i = 0; i < m; i++) setTimeout(() => { noiseHit(0.09, 1200 + Math.random() * 1500, 0.32, 'bandpass'); tone(240 + Math.random() * 220, 0.06, { type: 'square', vol: 0.05 }); }, i * 70 + Math.random() * 40); noiseHit(0.8, 300, 0.4, 'lowpass'); },
     };
     /* ---------- background music: an original, generated piece that follows the flight ---------- */
     let musicOn = store.get('drone-music') !== '0';
     let musicNext = 0, musicStep = 0, musicMode = 'calm', musicLevel = 0;
     const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
     // calm, open D major for flying; a darker B minor turn while something is going wrong
-    const SONG = [
+    let SONG = [
       { pad: [50, 57, 61, 64], bass: 38 }, { pad: [47, 54, 57, 62], bass: 35 }, { pad: [55, 59, 62, 66], bass: 43 }, { pad: [52, 57, 62, 64], bass: 45 },
       { pad: [50, 57, 62, 66], bass: 38 }, { pad: [54, 57, 61, 64], bass: 42 }, { pad: [55, 59, 62, 67], bass: 43 }, { pad: [52, 57, 61, 64], bass: 45 },
     ];
-    const TENSE = [
+    let TENSE = [
       { pad: [47, 54, 59, 62], bass: 35 }, { pad: [43, 55, 59, 62], bass: 43 }, { pad: [52, 55, 59, 64], bass: 40 }, { pad: [54, 58, 61, 66], bass: 42 },
     ];
-    const SCALE = [62, 64, 66, 69, 71, 74, 76, 78, 81]; // D major pentatonic
+    let SCALE = [62, 64, 66, 69, 71, 74, 76, 78, 81]; // D major pentatonic
+    if (DESERT) { // D hijaz: a warmer, older sound for the sand
+      SONG = [{ pad: [50, 57, 62, 66], bass: 38 }, { pad: [51, 58, 63, 67], bass: 39 }, { pad: [50, 57, 62, 66], bass: 38 }, { pad: [48, 55, 60, 63], bass: 36 },
+        { pad: [50, 57, 62, 66], bass: 38 }, { pad: [43, 55, 58, 62], bass: 43 }, { pad: [51, 58, 63, 67], bass: 39 }, { pad: [50, 57, 62, 66], bass: 38 }];
+      TENSE = [{ pad: [43, 55, 58, 62], bass: 43 }, { pad: [51, 58, 63, 67], bass: 39 }, { pad: [50, 57, 62, 66], bass: 38 }, { pad: [48, 55, 60, 63], bass: 36 }];
+      SCALE = [62, 63, 66, 67, 69, 70, 72, 74, 75, 78];
+    }
     const RHYTHMS = [
       [1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], [1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
       [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0],
@@ -1173,11 +1258,12 @@
         const dRiver = VI_R ? VI_D : 1e9, dLake = Math.max(0, Math.hypot(lx - LAKE.x, lz - LAKE.z) - LAKE.r);
         const near = 1 - smooth(15, 240, Math.min(dRiver, dLake + 20));
         const high = 1 - smooth(10, 180, camera.position.y - terrainH(lx, lz));
-        waterLvl = near * high * 0.16;
+        waterLvl = near * high * (DESERT ? 0.06 : 0.16);
         const wf = SPOTS.find(sp => sp.id === 'fall');
         if (wf) waterLvl = Math.max(waterLvl, (1 - smooth(20, 260, Math.hypot(lx - wf.x, lz - wf.z))) * 0.3);
       }
       audio.water.gain.setTargetAtTime(state === 'paused' ? 0 : waterLvl, t, 0.4);
+      audio.sand.gain.setTargetAtTime(state === 'paused' || !fxState ? 0 : (fxState.wash * 0.22 + fxState.spray * 0.12) * (0.4 + 0.9 * droneVol), t, 0.12);
       // repeating alarm while something critical is going on
       if (alarmKind && state === 'play' && performance.now() / 1000 >= nextAlarm) {
         nextAlarm = performance.now() / 1000 + (alarmKind === 'lost' ? 1.5 : 1.8);
@@ -1213,7 +1299,7 @@
     function autoLand() {
       if (state !== 'play' || drone.crashed || drone.powerless) return;
       if (drone.landed) { toast('飛機已經在地上了。', 2); return; }
-      if (inLake(drone.x, drone.z) || (Math.hypot(drone.x - LAKE.x, drone.z - LAKE.z) < LAKE.r * 1.3 && terrainH(drone.x, drone.z) < LAKE.level + 1)) { toast('下面是湖，不能降落。先飛到岸上再按「降落」。', 3); SFX.blip(); return; }
+      if (inLake(drone.x, drone.z) || (Math.hypot(drone.x - LAKE.x, drone.z - LAKE.z) < LAKE.r * 1.3 && terrainH(drone.x, drone.z) < LAKE.level + 1)) { toast(`下面是${TXT.water}，不能降落。先飛到岸上再按「降落」。`, 3); SFX.blip(); return; }
       if (rth && rth.reason === 'lost') { toast('斷訊返航中，要等訊號恢復才能改成降落。', 3); SFX.blip(); return; }
       rth = null; ud.autoUp = null; ud.autoLand = true;
       toast('自動降落：飛機會在原地慢慢降下來。推搖桿可以取消。', 3); say('降落中');
@@ -1259,6 +1345,8 @@
     $('bPause').addEventListener('click', () => setPaused(state === 'play'));
     $('bSound').addEventListener('click', toggleSound);
     $('bMusic').addEventListener('click', toggleMusic);
+    const switchScene = () => { try { location.reload(); } catch (e) { /* ignore */ } };
+    $('bScene').addEventListener('click', switchScene); $('bEndScene').addEventListener('click', switchScene);
     app.tabIndex = -1;
 
     function endGame(success, why) {
@@ -1267,7 +1355,7 @@
       $('endEyebrow').textContent = success ? '任務完成' : '任務失敗';
       $('endTitle').textContent = success ? '平安回家，影片到手！' : (why.indexOf('電量') >= 0 ? '電量用完了' : why.indexOf('湖') >= 0 ? '飛機掉進湖裡' : '墜機了');
       $('endWhy').textContent = success
-        ? '你錄到了山中湖的空拍影片，也把飛機帶回起飛點。' + (mission.lostCount ? '途中斷訊過，飛高一點、讓山不要擋在你和飛機中間，就不會被迫返航。' : '')
+        ? TXT.win + (mission.lostCount ? TXT.lostTip : '')
         : why + '。' + (why.indexOf('電量') >= 0 ? '電量條上的白線是飛回家需要的電，電量快碰到白線就要返航。' : why.indexOf('樹') >= 0 || why.indexOf('山') >= 0 ? '飛低的時候放慢速度，或拉高一點再飛。' : why.indexOf('湖') >= 0 ? '在湖面上空要保持高度，錄影建議離水面 100 公尺以上。' : '接近地面時放慢下降速度。');
       $('sTime').textContent = fmtT(mission.time);
       $('sBatt').textContent = Math.max(0, Math.round(drone.battery)) + '%';
@@ -1342,7 +1430,7 @@
       // contextual tips
       if (airborne) {
         if (sig.q < 0.5 && sig.q > 0.02 && !flags.weak) { SFX.weak(); say('訊號變弱，請飛高一點'); }
-        if (sig.q < 0.5 && sig.q > 0.02) once('weak', '訊號變弱了：山擋在你和飛機中間。飛高一點，訊號就會回來。', 4.5);
+        if (sig.q < 0.5 && sig.q > 0.02) once('weak', TXT.weak, 4.5);
         if (drone.wind.speed > 9 && !flags.wind) say('強風警告');
         if (drone.wind.speed > 9) once('wind', '高處風很大：飛機會被吹偏，也更耗電。降低一點高度會比較穩。', 4.5);
         if (drone.battery < 30 && !flags.b30) { SFX.lowBatt(); say('電量剩百分之三十'); }
@@ -1360,7 +1448,7 @@
         if (e === 'takeoff') {
           if (!mission.started) { mission.started = true; mission.stage = Math.max(mission.stage, 1); }
           SFX.takeoff(); if (!flags.tk) say('起飛');
-          once('tk', '起飛了！往北邊的山谷飛，跟著羅盤上的橘色記號。', 4);
+          once('tk', TXT.takeoff, 4);
         } else if (e === 'landed') {
           if (ud.autoLand) { ud.autoLand = false; toast('已降落。', 1.8); }
           if (rth && rth.phase === 'descend') rth = null;
@@ -1371,6 +1459,10 @@
         } else if (e === 'crash') {
           rth = null;
           if (inLake(drone.x, drone.z)) { splashT = 0; SFX.splash(); } else SFX.crash();
+        } else if (e === 'wall' || e === 'thud' || e === 'bump' || e === 'water') {
+          if (fx) fx.onHit(drone.hit);
+          if (e === 'wall') { if (!flags.wallHit) say('沙牆倒了'); once('wallHit', '沙牆崩塌了！飛機被彈開，可以繼續飛。', 3.5); }
+          else if (e === 'thud') once('thud', '碰到沙地了，沙子很軟，沒關係，繼續飛！', 3);
         } else if (e === 'fence') { if (!flags.fence) SFX.blip(); once('fence', '已經到飛行範圍的邊界了。', 2.5); }
         else if (e === 'ceiling') { if (!flags.ceil) SFX.blip(); once('ceil', '已經到高度上限了。', 2.5); }
       }
@@ -1440,6 +1532,11 @@
       waterMat.uniforms.uTime.value = now;
       if (fallMat) fallMat.uniforms.uTime.value = now;
       beaconMat.uniforms.uTime.value = now;
+      if (fx) {
+        fxState = fx.update(dt, now, drone, { airborne: airborne(), thrust: lastCmd ? 0.55 + 0.45 * lastCmd.thr : 0.55, camera, camMode: state === 'play' ? camMode : 0 });
+        set('dust', fxState.dust.toFixed(2), v => { $('dust').style.opacity = v; });
+        if (fxState.wash > 0.35 && state === 'play') once('sand', '飛得很低，螺旋槳把沙子吹起來了！', 3);
+      }
 
       // wind streaks around the drone
       const ws = drone.wind.speed || 0, sa = clamp((ws - 4.5) / 9, 0, 1) * 0.5;
@@ -1587,7 +1684,7 @@
       if (stage === 0) sub = touchUI ? '按右上角的「上升」，或把左邊搖桿往上推起飛' : '按右上角的「上升」（或按住 <b>W</b>）起飛';
       else if (stage === 1) {
         const dt2 = Math.hypot(drone.x - TARGET.x, drone.z - TARGET.z);
-        sub = `錄影點還有 <b>${Math.round(dt2)} m</b>，建議離水面 <b>100–200 m</b>`;
+        sub = `錄影點還有 <b>${Math.round(dt2)} m</b>，建議${TXT.above} <b>100–200 m</b>`;
       } else if (stage === 2) {
         const inZ = inRecordZone(drone);
         sub = inZ ? `錄影中 <b>${mission.rec.toFixed(1)} / ${TARGET.need} 秒</b>` : `回到橘色圈圈裡繼續錄影（已錄 <b>${mission.rec.toFixed(1)} 秒</b>）`;

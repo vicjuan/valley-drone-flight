@@ -145,7 +145,7 @@ button{font-family:inherit}
 .card h1,.card h2{margin:0;font:900 clamp(28px,4.4vw,44px)/1.15 var(--f-display);letter-spacing:.04em;text-wrap:balance;color:#fff}
 .card h2{font-size:clamp(24px,3.6vw,36px)}
 .card p{margin:0;color:#dbe4ea;font-size:15px;max-width:60ch;text-wrap:pretty}
-.hz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hz{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
 .hz div{border:1px solid var(--line);border-radius:11px;padding:11px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .hz b{font-size:15px;color:#fff;display:flex;align-items:center;gap:7px}
 .hz b::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--c)}
@@ -249,6 +249,23 @@ kbd.k{display:inline-block;min-width:1.6em;text-align:center;font:600 11.5px/1 v
 .stars li.got{color:#fff}
 .stars li.got::before{color:#ffc94a}
 #loading .card{width:auto;align-items:center;flex-direction:row;gap:14px}
+/* scene picker */
+.card.pick{width:min(880px,100%)}
+.scenes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.scene{appearance:none;position:relative;text-align:left;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:14px;padding:0;overflow:hidden;color:#fff;display:flex;flex-direction:column;font:inherit;transition:transform .15s,border-color .15s,box-shadow .15s}
+.scene:hover,.scene:focus-visible{border-color:var(--target);transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.4)}
+.scene:focus-visible{outline:2px solid var(--target);outline-offset:2px}
+.scene svg{display:block;width:100%;height:auto;aspect-ratio:2/1}
+.scene .sb{padding:12px 15px 15px;display:flex;flex-direction:column;gap:6px}
+.scene b{font:900 clamp(22px,2.6vw,27px)/1.15 var(--f-display);letter-spacing:.05em}
+.scene span{font-size:13.5px;color:#d3dde4;line-height:1.55}
+.scene em{font-style:normal;font:600 12px/1.4 var(--f-body);color:var(--target);letter-spacing:.08em}
+.scene .tag{position:absolute;right:10px;top:10px;font:700 11.5px/1 var(--f-body);color:#1b1006;background:var(--target);padding:5px 8px;border-radius:999px;display:none}
+.scene.last .tag{display:block}
+.picking .ov:not(.screen),.picking .stick{visibility:hidden}
+#dust{inset:0;opacity:0;background:radial-gradient(ellipse at 50% 62%,rgba(228,192,138,.5) 0%,rgba(212,168,108,.92) 100%)}
+@media (max-width:620px){ .scenes{grid-template-columns:1fr} .scene svg{aspect-ratio:3/1} }
+@media (max-height:520px){ .scene svg{aspect-ratio:3.2/1} .scene .sb{padding:8px 12px 10px;gap:3px} .scene span{font-size:12.5px} .card.pick h1{font-size:24px} }
 .spin{width:22px;height:22px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:var(--target);animation:rot 1s linear infinite}
 
 @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}

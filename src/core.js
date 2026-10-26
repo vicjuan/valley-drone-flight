@@ -9,11 +9,44 @@ const wrapAng = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI
 const HOME = { x: 0, z: 0 };
 const PILOT = { x: -11, z: 7 };
 const PAD_R = 2.6, PAD_TOP = 0.22, FOOT = 0.17;
+// these hold the current scene's values (see setScene)
 const LAKE = { x: 95, z: -1250, level: -31, r: 105 };
 const TARGET = { x: 95, z: -1250, r: 70, minAgl: 6, maxAgl: 200, need: 6 };
 const INNER = { x0: -1500, x1: 1500, z0: -2150, z1: 850 };
 const FENCE = { x0: -1150, x1: 1150, z0: -1820, z1: 520, top: 760 };
 const MAX_H = 17, MAX_UP = 5, MAX_DN = 4.5, MAX_YAW = 1.25, DRIFT = 0.35;
+
+/* ---------- scenes: the mountain valley, and the desert canyon with an oasis ---------- */
+let SCENE_ID = 'valley';
+let SOFT = false; // desert: sand is soft, nothing on the way down ends the flight
+const SCENES = {
+  valley: {
+    lake: { x: 95, z: -1250, level: -31, r: 105 }, target: { x: 95, z: -1250, r: 70, minAgl: 6, maxAgl: 200, need: 6 },
+    inner: { x0: -1500, x1: 1500, z0: -2150, z1: 850 }, fence: { x0: -1150, x1: 1150, z0: -1820, z1: 520, top: 760 },
+    cp: [
+      [10, 460, 3, 230, 320], [0, 130, 0, 210, 320], [30, -220, -2, 150, 260], [-30, -480, -5, 105, 170], [-150, -690, -9, 62, 115],
+      [-95, -880, -13, 50, 105], [60, -1000, -18, 62, 115], [120, -1140, -23, 130, 150], [92, -1262, -26, 185, 190], [20, -1440, -20, 150, 220], [-40, -1660, -9, 110, 260],
+    ],
+  },
+  desert: {
+    lake: { x: 40, z: -1200, level: -24.5, r: 42 }, target: { x: 40, z: -1200, r: 65, minAgl: 6, maxAgl: 200, need: 6 },
+    inner: { x0: -1000, x1: 1000, z0: -1600, z1: 400 }, fence: { x0: -820, x1: 820, z0: -1460, z1: 300, top: 600 },
+    // canyon through a plateau of packed sand: [x, z, floor height, half width, wall width].
+    // Nearly straight from the camp (the radio link reaches down it), then an S-bend hides the oasis behind a tongue of the plateau.
+    cp: [
+      [8, -120, 0.5, 90, 30], [10, -200, 0, 72, 24], [30, -340, -2, 58, 20], [0, -480, -4, 50, 18], [-30, -620, -7, 64, 20],
+      [0, -760, -9, 40, 16], [20, -880, -12, 46, 18], [110, -975, -15, 44, 18], [150, -1080, -17, 44, 18], [40, -1200, -21, 140, 40], [10, -1320, -19, 110, 44],
+    ],
+  },
+};
+function setScene(id) {
+  SCENE_ID = SCENES[id] ? id : 'valley';
+  const S = SCENES[SCENE_ID];
+  SOFT = SCENE_ID === 'desert';
+  Object.assign(LAKE, S.lake); Object.assign(TARGET, S.target); Object.assign(INNER, S.inner); Object.assign(FENCE, S.fence);
+  VALLEY_CP = S.cp; VALLEY = buildValley(); GRID = null;
+  return SCENE_ID;
+}
 
 /* ---------- gradient noise ---------- */
 const PERM = new Uint8Array(512), GX = new Float32Array(256), GZ = new Float32Array(256);
@@ -51,12 +84,10 @@ function ridged(x, z, oct) {
   return s / n;
 }
 
-/* ---------- valley spline: [x, z, floor height, half width, wall ramp width] ---------- */
-const VALLEY_CP = [
-  [10, 460, 3, 230, 320], [0, 130, 0, 210, 320], [30, -220, -2, 150, 260], [-30, -480, -5, 105, 170], [-150, -690, -9, 62, 115],
-  [-95, -880, -13, 50, 105], [60, -1000, -18, 62, 115], [120, -1140, -23, 130, 150], [92, -1262, -26, 185, 190], [20, -1440, -20, 150, 220], [-40, -1660, -9, 110, 260],
-];
-const VALLEY = (function () {
+/* ---------- valley (or canyon) spline: [x, z, floor height, half width, wall ramp width] ---------- */
+let VALLEY_CP = SCENES.valley.cp;
+let VALLEY = buildValley();
+function buildValley() {
   const P = VALLEY_CP, out = [];
   for (let i = 0; i < P.length - 1; i++) {
     const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
@@ -67,10 +98,10 @@ const VALLEY = (function () {
     }
   }
   out.push(P[P.length - 1].slice());
-  // river flag per node: from where the valley narrows down to the lake
-  for (const p of out) p[5] = p[1] < -440 && Math.hypot(p[0] - LAKE.x, p[1] - LAKE.z) > LAKE.r * 0.6 && p[1] > -1300 ? 1 : 0;
+  // river flag per node: from where the valley narrows down to the lake (the desert canyon is dry)
+  for (const p of out) p[5] = SCENE_ID === 'valley' && p[1] < -440 && Math.hypot(p[0] - LAKE.x, p[1] - LAKE.z) > LAKE.r * 0.6 && p[1] > -1300 ? 1 : 0;
   return out;
-})();
+}
 let VI_D = 0, VI_F = 0, VI_W = 0, VI_R = 0, VI_K = 300;
 function valleyInfo(x, z) {
   let best = 1e18, bf = 0, bw = 0, br = 0, bk = 300;
@@ -108,7 +139,8 @@ function mountains(x, z) {
   m *= 1 + 1.15 * smooth(2300, 7000, R);
   return m;
 }
-function heightAt(x, z) {
+function heightAt(x, z) { return SCENE_ID === 'desert' ? desertHeight(x, z) : valleyHeight(x, z); }
+function valleyHeight(x, z) {
   const m = mountains(x, z);
   valleyInfo(x, z);
   const rawD = VI_D, f = VI_F, w = VI_W, river = VI_R, ramp = VI_K;
@@ -154,6 +186,76 @@ function heightAt(x, z) {
 }
 const SADDLE_AGL = 78; // height above the lake at which the radio link just clears the col
 
+/* ---------- desert: dune sea, a plateau of packed sand, the canyon cut into it, an oasis at its end ---------- */
+const DUNE_U = { x: Math.cos(0.32), z: Math.sin(0.32) }; // dunes march downwind (same wind as WIND_DIR)
+// one dune train: a long gentle windward slope, a sharp crest, a short steep slip face
+function dune(x, z, scale, amp, seed) {
+  const is = 1 / scale;
+  const wx = x + 0.55 * scale * gnoise(x * 0.5 * is + seed, z * 0.5 * is - seed);
+  const wz = z + 0.55 * scale * gnoise(x * 0.5 * is - seed * 1.7, z * 0.5 * is + seed * 0.9);
+  const u = (wx * DUNE_U.x + wz * DUNE_U.z) * is, v = (-wx * DUNE_U.z + wz * DUNE_U.x) * is;
+  const ph = u + 0.32 * Math.sin(v * 1.9 + seed);
+  const s = ph - Math.floor(ph);
+  let prof; if (s < 0.82) { const q = s / 0.82; prof = q * Math.sqrt(q); } else prof = 1 - (s - 0.82) / 0.18;
+  const m = clamp01(0.5 + 1.1 * gnoise(x * 0.45 * is + seed * 3.1, z * 0.45 * is - seed));
+  return amp * prof * m;
+}
+const GIANT = { x: -380, z: -820 };
+function giantDune(x, z) { // a three-armed star dune, the tallest sand in the area
+  const dx = x - GIANT.x, dz = z - GIANT.z, r = Math.hypot(dx, dz);
+  if (r > 330) return 0;
+  const a = Math.atan2(dz, dx);
+  const arm = Math.pow(Math.max(0, Math.cos(3 * a + 0.4)), 4);
+  const re = r / (1 + 0.55 * arm);
+  const k = Math.max(0, 1 - re / 175);
+  return 72 * Math.pow(k, 1.55);
+}
+const BUTTES = [[-470, 70, 62, 58], [560, -40, 70, 66], [-640, -330, 80, 70], [430, 190, 45, 40]]; // x, z, radius, height
+function desertHeight(x, z) {
+  valleyInfo(x, z);
+  const rawD = VI_D, f = VI_F, w = VI_W, ramp = VI_K;
+  // the plateau north of a wavy escarpment, the open sand sea everywhere else
+  const ez = -190 + 40 * fbm(x * 0.0032 + 7.7, 0.37, 2);
+  const pm = smooth(ez + 12, ez - 16, z) * (1 - smooth(1250, 1500, Math.abs(x))) * (1 - smooth(1900, 2200, -z));
+  const plain = pm > 0.999 ? 0 : 1.5 + dune(x, z, 150, 9, 1.3) + dune(x, z, 46, 2, 4.1) + 5 * fbm(x * 0.0012 + 2.3, z * 0.0012 - 1.1, 2);
+  const top = pm < 0.001 ? 0 : 58 + 7 * fbm(x * 0.0021 + 3.1, z * 0.0021 - 1.7, 2) + 0.8 * dune(x, z, 110, 4.5, 7.7) + giantDune(x, z);
+  let h = lerp(plain, top, pm);
+  // flat-topped buttes on the sand sea, and big mesas on the horizon
+  for (const b of BUTTES) {
+    const d0 = Math.hypot(x - b[0], z - b[1]); if (d0 > b[2] + 12) continue;
+    const d = d0 + 9 * gnoise(x * 0.03 + b[0], z * 0.03 + b[1]);
+    const k = 1 - smooth(b[2] * 0.82, b[2], d);
+    if (k > 0) h = Math.max(h, lerp(h, b[3] + 4 * gnoise(x * 0.01, z * 0.01), k));
+  }
+  const R0 = Math.hypot(x, z + 600);
+  if (R0 > 1900) {
+    const fm = smooth(0.12, 0.2, fbm(x * 0.0006 + 9.1, z * 0.0006 - 4.4, 3)) * smooth(1900, 2700, R0);
+    if (fm > 0) h = Math.max(h, lerp(h, 130 + 90 * fbm(x * 0.0004 + 1.3, z * 0.0004 + 2.2, 2), fm));
+  }
+  // the canyon: steep walls of layered sand, a sandy floor
+  const d = rawD + 6 * gnoise(x * 0.035 + 1.7, z * 0.035 - 2.3) + 3 * gnoise(x * 0.11, z * 0.11);
+  const cut = (1 - smooth(w, w + ramp, d)) * smooth(0, 0.3, pm);
+  if (cut > 0) {
+    const fl = f + 0.9 * dune(x, z, 58, 2.4, 2.9) + 0.8 * fbm(x * 0.02, z * 0.02, 2);
+    if (fl < h) h = lerp(h, fl, cut);
+  }
+  // the camp: flat sand around the pad
+  const dh = Math.hypot(x - HOME.x, z - HOME.z);
+  const md = 1 - smooth(45, 120, dh);
+  if (md > 0) h = lerp(h, 0.6 + 1.2 * fbm(x * 0.01 + 4.4, z * 0.01 - 3.3, 2), md);
+  const pf = 1 - smooth(9, 28, dh);
+  if (pf > 0) h = lerp(h, 0, pf);
+  // the oasis pond
+  const dl = Math.hypot(x - LAKE.x, z - LAKE.z);
+  if (dl < LAKE.r * 3) {
+    const ang = Math.atan2(z - LAKE.z, x - LAKE.x);
+    const rr = LAKE.r * (1 + 0.18 * Math.sin(ang * 3 + 0.7) + 0.1 * Math.sin(ang * 5 - 1.1));
+    const prof = LAKE.level - 4 + 4.6 * (dl / rr) * (dl / rr);
+    if (prof < h) h = prof;
+  }
+  return h;
+}
+
 /* ---------- height grid (what the game samples and the mesh is built from) ---------- */
 let GRID = null;
 function buildGrid(n) {
@@ -190,6 +292,7 @@ function buildTrees(maxN, seed) {
   let s = seed | 0 || 7;
   const rnd = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   TREES = []; TREE_CELLS = new Map();
+  if (SCENE_ID === 'desert') return buildPalms(rnd);
   for (let tries = 0; tries < maxN * 14 && TREES.length < maxN; tries++) {
     const x = lerp(-1300, 1300, rnd()), z = lerp(-1950, 650, rnd());
     const h = terrainH(x, z), sl = slopeAt(x, z);
@@ -211,6 +314,23 @@ function buildTrees(maxN, seed) {
   }
   return TREES;
 }
+// date palms ring the oasis pond, a few stand at the camp
+function buildPalms(rnd) {
+  const tryAdd = (x, z, H) => {
+    for (const t of TREES) if (Math.hypot(t.x - x, t.z - z) < 5.5) return false;
+    const y = terrainH(x, z), lean = 0.05 + rnd() * 0.16, la = rnd() * 6.283;
+    addTreeObj({ x, z, y: y - 0.3, H, r: 0.45, c: rnd(), yaw: la, palm: true, lean, cx: x + Math.cos(la) * lean * H, cz: z + Math.sin(la) * lean * H, crown: 3.4 + H * 0.12 });
+    return true;
+  };
+  for (let k = 0, n = 0; k < 900 && n < 95; k++) {
+    const a = rnd() * 6.283, r = LAKE.r * (1.08 + rnd() * rnd() * 2.1);
+    const x = LAKE.x + Math.cos(a) * r, z = LAKE.z + Math.sin(a) * r, h = terrainH(x, z);
+    if (h < LAKE.level + 0.5 || h > LAKE.level + 7 || slopeAt(x, z) > 0.45) continue;
+    if (tryAdd(x, z, 9 + rnd() * 8)) n++;
+  }
+  for (const [x, z] of [[-34, 22], [-42, 30], [31, 26], [40, 36], [-26, 40]]) tryAdd(x, z, 7 + rnd() * 5);
+  return TREES;
+}
 function treeHit(x, y, z, pad) {
   const cx = Math.floor(x / TREE_CELL), cz = Math.floor(z / TREE_CELL);
   for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
@@ -218,6 +338,13 @@ function treeHit(x, y, z, pad) {
     if (!list) continue;
     for (const t of list) {
       const top = t.y + t.H;
+      if (t.palm) { // thin trunk, a wide crown of fronds at the top
+        if (y > top + 1.2) continue;
+        const k = clamp((y - t.y) / t.H, 0, 1);
+        if (y > top - 2.2) { if (Math.hypot(x - t.cx, z - t.cz) < t.crown + pad) return t; }
+        else if (Math.hypot(x - lerp(t.x, t.cx, k), z - lerp(t.z, t.cz, k)) < t.r + pad) return t;
+        continue;
+      }
       if (y > top) continue;
       const rAt = t.r * clamp((top - y) / (t.H * 0.85), 0.15, 1) + pad;
       if (Math.hypot(x - t.x, z - t.z) < rAt) return t;
@@ -335,6 +462,7 @@ function stepDrone(d, c, dt, t) {
     else { d.landT += dt; if (d.landT > 1.6) { d.motors = false; ev.push('motorsOff'); } return ev; }
   }
 
+  const ox = d.x, oy = d.y, oz = d.z;
   if (d.powerless) {
     d.spin = Math.max(0, d.spin - dt * 2.5);
     d.vy -= 9.8 * dt; d.vx *= Math.exp(-dt * 0.15); d.vz *= Math.exp(-dt * 0.15);
@@ -371,6 +499,7 @@ function stepDrone(d, c, dt, t) {
   }
 
   // contact with ground, water and trees
+  if (SOFT) return softContact(d, ev, ox, oy, oz);
   const g = groundAt(d.x, d.z);
   if (inLake(d.x, d.z) && d.y - FOOT <= LAKE.level) { crash(d, '掉進湖裡了', ev); d.landed = false; return ev; }
   if (d.y - FOOT <= g) {
@@ -383,6 +512,48 @@ function stepDrone(d, c, dt, t) {
   } else {
     const ob = obstacleHit(d.x, d.y, d.z);
     if (ob) { crash(d, ob, ev); d.landed = false; return ev; }
+  }
+  return ev;
+}
+// desert contact rules: sand, water, palms and rocks push the drone back, they never end the flight.
+// d.hit tells the game where it happened so it can blow sand, knock a sand wall down, and so on.
+function softContact(d, ev, ox, oy, oz) {
+  const hs = Math.hypot(d.vx, d.vz);
+  if (inLake(d.x, d.z) && d.y - FOOT <= LAKE.level + 0.6) { // a cushion of air over the pond
+    if (d.powerless) { d.y = LAKE.level - 0.5; crash(d, '電量耗盡，飛機掉進綠洲的水裡', ev); d.landed = true; return ev; }
+    d.y = LAKE.level + 0.6 + FOOT; if (d.vy < 0) d.vy = 0;
+    d.hit = { x: d.x, z: d.z, y: LAKE.level, s: hs, kind: 'water' }; ev.push('water');
+    return ev;
+  }
+  const g = groundAt(d.x, d.z);
+  if (d.y - FOOT <= g) {
+    if (d.powerless) { d.y = g + FOOT; d.hit = { x: d.x, z: d.z, y: g, s: 6, kind: 'thud' }; ev.push('thud'); crash(d, '電量耗盡，飛機掉進沙堆裡', ev); d.landed = true; return ev; }
+    const e = 1.2, gx = (terrainH(d.x + e, d.z) - terrainH(d.x - e, d.z)) / (2 * e), gz = (terrainH(d.x, d.z + e) - terrainH(d.x, d.z - e)) / (2 * e);
+    const sl = Math.hypot(gx, gz);
+    if (sl > 0.95) { // a wall of packed sand
+      const nx = gx / sl, nz = gz / sl, into = d.vx * nx + d.vz * nz;
+      d.hit = { x: d.x + nx * 1.5, z: d.z + nz * 1.5, y: d.y, s: Math.max(into, -d.vy, 1), kind: 'wall' };
+      if (into > 0) { d.x = ox; d.z = oz; d.vx -= nx * into * 1.4; d.vz -= nz * into * 1.4; }
+      d.x -= nx * 0.15; d.z -= nz * 0.15;
+      const g2 = groundAt(d.x, d.z); if (d.y - FOOT < g2) d.y = g2 + FOOT;
+      if (d.vy < 0.3) d.vy = 0.3;
+      ev.push('wall'); return ev;
+    }
+    d.y = g + FOOT;
+    if (d.vy < -2.2 || hs > 4.5) { // hit the sand hard: a burst of sand, keep flying
+      d.hit = { x: d.x, z: d.z, y: g, s: Math.max(-d.vy, hs), kind: 'thud' };
+      d.vy = Math.max(0, -d.vy * 0.15); d.vx *= 0.5; d.vz *= 0.5;
+      ev.push('thud'); return ev;
+    }
+    d.vx = d.vy = d.vz = 0; d.landed = true; d.landT = 0; ev.push('landed');
+    return ev;
+  }
+  const t = treeHit(d.x, d.y, d.z, 0.35), ob = t ? null : obstacleHit(d.x, d.y, d.z);
+  if (t || ob) { // bounce off a palm, a rock or a tent
+    d.hit = { x: d.x, z: d.z, y: d.y, s: Math.hypot(hs, d.vy), kind: t ? 'palm' : 'bump', what: ob };
+    d.x = ox; d.y = oy; d.z = oz;
+    d.vx *= -0.35; d.vz *= -0.35; d.vy *= -0.2;
+    ev.push('bump');
   }
   return ev;
 }
