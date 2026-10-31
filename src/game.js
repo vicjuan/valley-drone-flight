@@ -877,6 +877,7 @@
       camSnap = true; beaconMat.uniforms.uCol.value.setRGB(1.0, 0.6, 0.24); pillarMat.color.setHex(0xff9a3c); homePillar.visible = false;
       $('lblTarget').classList.remove('done'); $('lblTarget').textContent = '錄影點';
       if (fx) fx.reset();
+      setLever(0);
       setAlert(null); toast('');
     }
 
@@ -902,6 +903,8 @@
         else if (e.code === 'KeyL') autoLand();
         else if (e.code === 'KeyF') takePhoto();
         else if (e.code === 'KeyG') openAlbum();
+        else if (e.code === 'KeyE') leverUp();
+        else if (e.code === 'KeyQ') leverDown();
       } else if (!$('album').hidden && (e.code === 'Escape' || e.code === 'KeyG')) { if (!$('viewer').hidden) $('viewer').hidden = true; else closeAlbum(); }
       else if (state === 'paused' && (e.code === 'KeyP' || e.code === 'Escape')) setPaused(false);
     });
@@ -950,7 +953,7 @@
         const b = i => gp.buttons[i] && gp.buttons[i].pressed;
         const edge = (i, fn) => { const k = 'gp' + i; if (b(i) && !flags[k]) { flags[k] = 1; fn(); } else if (!b(i)) flags[k] = 0; };
         edge(9, () => { if (state === 'play') setPaused(true); else if (state === 'paused') setPaused(false); else if (state === 'title') startGame(); else if (state === 'ended') restart(); });
-        if (state === 'play') { edge(3, toggleRth); edge(2, cycleCam); edge(0, takePhoto); }
+        if (state === 'play') { edge(3, toggleRth); edge(2, cycleCam); edge(0, takePhoto); edge(5, leverUp); edge(4, leverDown); }
         break;
       }
     }
@@ -1316,10 +1319,36 @@
       dn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); autoLand(); } });
     }
     setupUpDown();
+    /* ---------- the fast-slow lever: push it up and the drone keeps flying forward, higher is faster ---------- */
+    const lever = { v: 0, id: null };
+    function setLever(v, byUser) {
+      v = clamp(Math.round(v * 20) / 20, 0, 1);
+      if (v === lever.v) return;
+      const was = lever.v; lever.v = v;
+      $('leverFill').style.height = (v * 100) + '%'; $('leverKnob').style.bottom = (v * 100) + '%';
+      $('leverKnob').textContent = v === 0 ? '停' : String(Math.round(v * MAX_H));
+      $('lever').classList.toggle('on', v > 0); $('lever').setAttribute('aria-valuenow', String(Math.round(v * 100)));
+      if (byUser) {
+        if (Math.round(v * 4) !== Math.round(was * 4)) SFX.click();
+        if (v > 0) once('lever', '快慢桿：往上推，飛機會自己一直往前飛，越上面越快；拉到最下面就停。轉彎用左邊搖桿，或按 A／D。', 5);
+      }
+    }
+    const leverUp = () => setLever(Math.min(1, Math.floor(lever.v * 4 + 1.001) / 4), true);
+    const leverDown = () => setLever(Math.max(0, Math.ceil(lever.v * 4 - 1.001) / 4), true);
+    (function setupLever() {
+      const tr = $('leverTrack');
+      const fromY = y => { const r = tr.getBoundingClientRect(); return 1 - (y - r.top) / Math.max(1, r.height); };
+      tr.addEventListener('pointerdown', e => { e.preventDefault(); startAudio(); lever.id = e.pointerId; try { tr.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ } setLever(fromY(e.clientY), true); });
+      tr.addEventListener('pointermove', e => { if (e.pointerId === lever.id) setLever(fromY(e.clientY), true); });
+      const end = e => { if (e.pointerId === lever.id) lever.id = null; };
+      tr.addEventListener('pointerup', end); tr.addEventListener('pointercancel', end);
+      $('leverUp').addEventListener('click', () => { startAudio(); leverUp(); });
+      $('leverDn').addEventListener('click', () => { startAudio(); leverDown(); });
+    })();
     function toggleRth() {
       if (state !== 'play' || drone.landed || drone.crashed || drone.powerless) return;
       if (rth) { if (rth.reason === 'lost') { toast('訊號中斷時無法取消返航，飛機要先回到看得到你的地方。', 3); SFX.blip(); return; } rth = null; toast('已取消返航，改回手動操作。', 2.5); SFX.blip(); say('取消返航'); }
-      else { rth = newRth('user', drone, simT); toast('自動返航：先爬升到安全高度，再直線飛回起飛點降落。按 H 或推動搖桿可以取消。', 4); SFX.rth(); say('開始自動返航'); }
+      else { rth = newRth('user', drone, simT); setLever(0); toast('自動返航：先爬升到安全高度，再直線飛回起飛點降落。按 H 或推動搖桿可以取消。', 4); SFX.rth(); say('開始自動返航'); }
     }
     function cycleCam() { SFX.click(); camMode = (camMode + 1) % 3; camSnap = true; $('viewName').textContent = CAM_NAMES[camMode] + '（按 C 切換）'; toast(CAM_NAMES[camMode], 1.4); }
     function setPaused(p) {
@@ -1382,7 +1411,7 @@
       // radio link loss → automatic return
       if (airborne && !drone.powerless) {
         if (sig.q < 0.1) lostT += dt; else if (sig.q >= 0.3) lostT = 0;
-        if (lostT > 2.5 && (!rth || rth.reason !== 'lost')) { rth = newRth('lost', drone, simT); mission.lostCount++; toast('訊號斷了超過 2.5 秒，飛機自己開始返航：先往上爬，等看得到你再飛回來。', 5); say('訊號中斷，自動返航'); }
+        if (lostT > 2.5 && (!rth || rth.reason !== 'lost')) { rth = newRth('lost', drone, simT); setLever(0); mission.lostCount++; toast('訊號斷了超過 2.5 秒，飛機自己開始返航：先往上爬，等看得到你再飛回來。', 5); say('訊號中斷，自動返航'); }
         if (rth && rth.reason === 'lost' && sig.q >= 0.3) { rth.reason = 'restored'; toast('訊號恢復了！推動搖桿或按 H 就能取消返航。', 4); SFX.restored(); say('訊號恢復'); }
       }
       if (rth && stickMag < 0.2) rth.armed = true; // sticks must come back to centre once before a push cancels the return
@@ -1391,7 +1420,7 @@
       // the up / land buttons
       if (ud.autoLand && (stickMag > 0.35 || drone.crashed)) { ud.autoLand = false; if (!drone.crashed) toast('已取消降落，改回手動操作。', 2); }
       if (ud.autoUp && (stickMag > 0.35 || drone.crashed || (!drone.landed && drone.y >= ud.autoUp.target - 0.3))) ud.autoUp = null;
-      const manual = { thr: sticks.thr, yaw: sticks.yaw, pitch: sticks.pitch, roll: sticks.roll };
+      const manual = { thr: sticks.thr, yaw: sticks.yaw, pitch: clamp(sticks.pitch + lever.v, -1, 1), roll: sticks.roll };
       if (ud.up) manual.thr = 1;
       else if (ud.autoUp) manual.thr = 1;
       else if (ud.autoLand) { manual.thr = -1; manual.pitch = 0; manual.roll = 0; }
@@ -1450,6 +1479,7 @@
           SFX.takeoff(); if (!flags.tk) say('起飛');
           once('tk', TXT.takeoff, 4);
         } else if (e === 'landed') {
+          setLever(0);
           if (ud.autoLand) { ud.autoLand = false; toast('已降落。', 1.8); }
           if (rth && rth.phase === 'descend') rth = null;
           SFX.landed();
@@ -1457,6 +1487,7 @@
         } else if (e === 'powerless') {
           rth = null; toast('電量 0%！馬達停轉，飛機直接掉下去了⋯⋯', 4); say('電量耗盡');
         } else if (e === 'crash') {
+          setLever(0);
           rth = null;
           if (inLake(drone.x, drone.z)) { splashT = 0; SFX.splash(); } else SFX.crash();
         } else if (e === 'wall' || e === 'thud' || e === 'bump' || e === 'water') {
@@ -1573,7 +1604,7 @@
     for (const sp of SPOTS) {
       const el = document.createElement('div'); el.className = 'ov label spotlbl'; el.hidden = true;
       el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm8 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg><span></span>';
-      app.insertBefore(el, $('mission')); sp.el = el;
+      app.insertBefore(el, $('leftc')); sp.el = el;
     }
     function project(x, y, z) {
       projV.set(x, y, z).project(camera);
@@ -1650,8 +1681,60 @@
       sctx.putImageData(sImg, 0, 0);
       el.style.opacity = (level * (camMode === 1 ? 0.85 : 0.42)).toFixed(2);
     }
+    /* speedometer: ground speed on a dial (m/s, with km/h underneath), climb and descent on the bar at the right */
+    const speedo = $('speedo'), spx = speedo.getContext('2d');
+    const SPD_MAX = 20, A0 = Math.PI * 0.75, A1 = Math.PI * 2.25; // the dial sweeps 270 degrees, open at the bottom
+    let needle = 0, vbar = 0, spdKey = '';
+    function drawSpeedo(dt) {
+      const hs = Math.hypot(drone.vx, drone.vz), vs = drone.landed ? 0 : drone.vy;
+      needle += (Math.min(hs, SPD_MAX + 1) - needle) * (1 - Math.exp(-dt * 10));
+      vbar += (clamp(vs, -MAX_DN, MAX_UP) - vbar) * (1 - Math.exp(-dt * 10));
+      const key = needle.toFixed(2) + '|' + vbar.toFixed(2) + '|' + lever.v;
+      if (key === spdKey) return; spdKey = key;
+      const c = spx, W = speedo.width, Hh = speedo.height, cx = 110, cy = 105, R = 84;
+      c.clearRect(0, 0, W, Hh);
+      const ang = v => A0 + (A1 - A0) * clamp(v / SPD_MAX, 0, 1.05);
+      // the scale: a soft track, an amber band near top speed, tick marks
+      c.lineCap = 'butt'; c.lineWidth = 9;
+      c.strokeStyle = 'rgba(255,255,255,.14)'; c.beginPath(); c.arc(cx, cy, R, A0, A1); c.stroke();
+      c.strokeStyle = 'rgba(243,176,74,.55)'; c.beginPath(); c.arc(cx, cy, R, ang(14), ang(17)); c.stroke();
+      c.strokeStyle = 'rgba(255,103,90,.6)'; c.beginPath(); c.arc(cx, cy, R, ang(17), A1); c.stroke();
+      c.strokeStyle = '#ff9a3c'; c.lineWidth = 9; c.beginPath(); c.arc(cx, cy, R, A0, ang(needle)); c.stroke();
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      for (let v = 0; v <= SPD_MAX; v++) {
+        const a = ang(v), major = v % 5 === 0, r0 = R - 9, r1 = R - (major ? 22 : 15);
+        c.strokeStyle = major ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.45)'; c.lineWidth = major ? 3 : 2;
+        c.beginPath(); c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); c.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); c.stroke();
+        if (major && v > 0 && v < SPD_MAX) { c.fillStyle = 'rgba(255,255,255,.9)'; c.font = '700 21px "Azeret Mono", ui-monospace, monospace'; c.fillText(String(v), cx + Math.cos(a) * (R - 38), cy + Math.sin(a) * (R - 38)); }
+      }
+      // the speed the fast-slow lever asks for
+      if (lever.v > 0) {
+        const t = ang(lever.v * MAX_H), ox = Math.cos(t), oy = Math.sin(t), px = -oy, py = ox;
+        c.fillStyle = '#ff9a3c'; c.beginPath();
+        c.moveTo(cx + ox * (R + 4), cy + oy * (R + 4)); c.lineTo(cx + ox * (R + 14) + px * 6, cy + oy * (R + 14) + py * 6); c.lineTo(cx + ox * (R + 14) - px * 6, cy + oy * (R + 14) - py * 6); c.closePath(); c.fill();
+      }
+      // the needle
+      const a = ang(needle);
+      c.strokeStyle = '#fff'; c.lineWidth = 4; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(cx - Math.cos(a) * 10, cy - Math.sin(a) * 10); c.lineTo(cx + Math.cos(a) * (R - 16), cy + Math.sin(a) * (R - 16)); c.stroke();
+      c.fillStyle = '#ff9a3c'; c.beginPath(); c.arc(cx, cy, 7, 0, Math.PI * 2); c.fill();
+      // the readout in the open bottom of the dial
+      c.fillStyle = '#fff'; c.font = '700 44px "Azeret Mono", ui-monospace, monospace'; c.fillText(String(Math.round(hs)), cx, cy + 36);
+      c.fillStyle = 'rgba(255,255,255,.8)'; c.font = '600 20px "Azeret Mono", ui-monospace, monospace'; c.fillText(`m/s · ${Math.round(hs * 3.6)} km/h`, cx, cy + 78);
+      // climb and descent
+      const bx = 262, bw = 22, top = 30, bot = 166, mid = (top + bot) / 2;
+      c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(bx, top, bw, bot - top);
+      const k = vbar >= 0 ? vbar / MAX_UP : vbar / MAX_DN;
+      c.fillStyle = vbar >= 0 ? '#5fd396' : '#8fc3ee';
+      if (Math.abs(k) > 0.01) { const h = (bot - top) / 2 * Math.abs(k); c.fillRect(bx, vbar >= 0 ? mid - h : mid, bw, h); }
+      c.fillStyle = '#fff'; c.fillRect(bx - 4, mid - 1.5, bw + 8, 3);
+      c.fillStyle = 'rgba(255,255,255,.85)'; c.font = '700 19px "Noto Sans TC", system-ui, sans-serif'; c.fillText('升', bx + bw / 2, top - 15); c.fillText('降', bx + bw / 2, bot + 15);
+      c.fillStyle = '#fff'; c.font = '700 19px "Azeret Mono", ui-monospace, monospace'; c.textAlign = 'right';
+      c.fillText((vbar >= 0.05 ? '+' : '') + vbar.toFixed(1), bx - 8, mid);
+    }
     function updateHud(dt) {
       if (state === 'play') updateGimbal(dt);
+      drawSpeedo(dt);
       const g = groundAt(drone.x, drone.z);
       const surf = inLake(drone.x, drone.z) ? Math.max(g, LAKE.level) : g;
       const agl = Math.max(0, drone.y - FOOT - surf);

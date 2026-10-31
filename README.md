@@ -45,6 +45,7 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 | 上升／下降 | W／S | 左邊搖桿上下推，或按住「上升」 |
 | 左轉／右轉 | A／D | 左邊搖桿左右推到底 |
 | 前後左右移動 | 方向鍵 | 右邊搖桿 |
+| 快慢桿（飛機自己往前飛，越上面越快） | Q／E | 速度表旁邊的快慢桿，往上推或點「快／慢」 |
 | 一鍵起飛／降落 | T／L | 「上升」點一下／「降落」 |
 | 拍照／相簿 | F／G | 「拍照」／「相簿」 |
 | 自動返航 | H | 「返航」 |
@@ -52,7 +53,9 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 | 暫停（可調音量） | P 或 Esc | 暫停鍵 |
 | 聲音／背景音樂 | M／N | 喇叭鍵／音樂鍵 |
 
-也支援遊戲手把（美國手 Mode 2 配置）。
+左上角的速度表顯示水平速度（m/s 和 km/h），旁邊的直條是上升或下降的速度；快慢桿設定的速度會在錶上用橘色小三角標出來。
+
+也支援遊戲手把（美國手 Mode 2 配置），LB／RB 是快慢桿。
 
 ## 執行
 

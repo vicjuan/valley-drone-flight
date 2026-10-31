@@ -31,7 +31,8 @@
   <div class="ov label" id="lblTarget" hidden>錄影點</div>
   <div class="ov label" id="lblHome" hidden>H 起飛點</div>
 
-  <div class="ov glass" id="mission">
+  <div class="ov" id="leftc">
+  <div class="glass" id="mission">
     <h3>任務</h3>
     <ol class="steps" id="steps">
       <li class="now"><i>1</i><span>起飛</span></li>
@@ -41,6 +42,15 @@
     </ol>
     <div id="mSub">按住 <b>W</b> 起飛</div>
     <div id="mPhotos" class="mphotos">拍照景點 <b>0 / 7</b></div>
+  </div>
+  <div class="spdrow">
+    <canvas id="speedo" width="312" height="198" class="glass" aria-label="速度表"></canvas>
+    <div id="lever" class="glass" role="slider" aria-label="快慢桿" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <button type="button" class="lstep" id="leverUp" aria-label="快一點">快</button>
+      <div class="ltrack" id="leverTrack"><i id="leverFill"></i><b id="leverKnob">停</b></div>
+      <button type="button" class="lstep" id="leverDn" aria-label="慢一點">慢</button>
+    </div>
+  </div>
   </div>
 
   <div class="ov" id="topc">
@@ -152,6 +162,7 @@
             <tr><td><kbd class="k">W</kbd><kbd class="k">S</kbd></td><td>上升／下降（按住 W 起飛）</td></tr>
             <tr><td><kbd class="k">T</kbd><kbd class="k">L</kbd></td><td>一鍵起飛／一鍵降落</td></tr>
             <tr><td><kbd class="k">F</kbd><kbd class="k">G</kbd></td><td>拍照／打開相簿</td></tr>
+            <tr><td><kbd class="k">Q</kbd><kbd class="k">E</kbd></td><td>快慢桿：慢一點／快一點（飛機會自己往前飛）</td></tr>
             <tr><td><kbd class="k">A</kbd><kbd class="k">D</kbd></td><td>左轉／右轉</td></tr>
             <tr><td><kbd class="k">↑</kbd><kbd class="k">↓</kbd></td><td>前進／後退</td></tr>
             <tr><td><kbd class="k">←</kbd><kbd class="k">→</kbd></td><td>向左／向右平移</td></tr>
@@ -167,7 +178,7 @@
             <figure><div class="ring r"><i></i><span class="u">前進</span><span class="d">後退</span><span class="w">左移</span><span class="e">右移</span></div>
               <figcaption><b>右邊搖桿</b>往哪推，飛機就往前後左右飛</figcaption></figure>
           </div>
-          <p class="note" style="margin-top:8px">最簡單的起飛和降落：按右上角的「上升」（按住會一直往上）和「降落」（按一下就自己降到地上）。手機建議橫著拿；接遊戲手把也是一樣的配置。</p>
+          <p class="note" style="margin-top:8px">最簡單的起飛和降落：按右上角的「上升」（按住會一直往上）和「降落」（按一下就自己降到地上）。左上角速度表旁邊的<b>快慢桿</b>往上推，飛機會自己一直往前飛，越上面越快，拉到最下面就停。手機建議橫著拿；接遊戲手把也是一樣的配置。</p>
         </section>
       </div>
       <div class="row">

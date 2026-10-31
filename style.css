@@ -40,8 +40,23 @@ button{font-family:inherit}
 #vignette.crit{background:radial-gradient(ellipse at center,transparent 50%,rgba(255,60,50,.32) 100%)}
 
 /* mission */
-#mission{box-sizing:border-box;left:var(--inset-l);top:var(--inset-t);width:min(290px,42vw);padding:10px 12px 11px;display:flex;flex-direction:column;gap:6px}
+#leftc{left:var(--inset-l);top:var(--inset-t);display:flex;flex-direction:column;align-items:flex-start;gap:8px;z-index:3}
+/* the fast-slow lever: it stays where you leave it; up = keep flying forward faster */
+.spdrow{display:flex;gap:8px;align-items:stretch}
+#lever{pointer-events:auto;touch-action:none;box-sizing:border-box;width:54px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:4px 0;gap:3px;-webkit-user-select:none;user-select:none}
+.lstep{appearance:none;border:0;background:transparent;color:#fff;font:700 14px/1 var(--f-body);padding:5px 12px;cursor:pointer;touch-action:manipulation}
+.lstep:active{color:var(--target)}
+.ltrack{position:relative;flex:1;width:12px;min-height:40px;margin:6px 0;border-radius:6px;background:rgba(255,255,255,.18);cursor:ns-resize;touch-action:none}
+.ltrack::before{content:"";position:absolute;inset:-10px -20px}
+#leverFill{position:absolute;left:0;right:0;bottom:0;height:0;border-radius:6px;background:var(--target)}
+#leverKnob{position:absolute;left:50%;bottom:0;width:30px;height:30px;margin:0 0 -15px -15px;border-radius:50%;background:#fff;color:#1b1006;display:grid;place-items:center;font:700 11px/1 var(--f-body);box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none}
+#lever.on #leverKnob{background:var(--target)}
+.touch #lever{width:46px}
+#mission{box-sizing:border-box;width:min(290px,42vw);padding:10px 12px 11px;display:flex;flex-direction:column;gap:6px}
 #mission h3{margin:0;font:700 12px/1 var(--f-body);letter-spacing:.24em;color:var(--muted)}
+/* speedometer: horizontal speed on a dial, climb and descent on a bar beside it */
+#speedo{width:204px;height:130px;display:block;border-radius:10px}
+.touch #speedo{width:148px;height:94px}
 .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
 .steps li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:6px;align-items:center;font-size:13.5px;color:var(--muted)}
 .steps li i{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);display:grid;place-items:center;font:600 10.5px/1 var(--f-data);font-style:normal;color:var(--muted)}
@@ -292,7 +307,13 @@ kbd.k{display:inline-block;min-width:1.6em;text-align:center;font:600 11.5px/1 v
 }
 @media (max-width:620px){
   .ctrls{grid-template-columns:1fr}
-  #mission,.touch #mission{width:calc(100% - 104px - 12px - var(--inset-l) - var(--inset-r))}
+  #leftc{width:calc(100% - 104px - 12px - var(--inset-l) - var(--inset-r))}
+  #mission,.touch #mission{width:100%}
+  #speedo,.touch #speedo{width:120px;height:76px}
+  #lever,.touch #lever{width:42px;padding:2px 0;gap:1px}
+  .lstep{font-size:12px;padding:2px 8px}
+  .ltrack{min-height:26px;margin:4px 0}
+  #leverKnob{width:24px;height:24px;margin:0 0 -12px -12px;font-size:9.5px}
   #map,.touch #map{width:104px;height:104px}
   .btns{display:grid;grid-template-columns:repeat(3,auto);justify-content:end}
   .btn{height:34px;padding:0 9px;font-size:12px;justify-content:center}
@@ -306,6 +327,10 @@ kbd.k{display:inline-block;min-width:1.6em;text-align:center;font:600 11.5px/1 v
   .sticks #tele{bottom:calc(var(--inset-b) + 192px)}
 }
 @media (max-height:500px){
+  #lever,.touch #lever{padding:2px 0;gap:1px}
+  .lstep{font-size:12.5px;padding:3px 9px}
+  .ltrack{min-height:26px;margin:4px 0}
+  #leverKnob{width:26px;height:26px;margin:0 0 -13px -13px;font-size:10px}
   #mission .steps{display:none}
   .ud{height:40px;min-width:0;padding:0 11px;font-size:14px}
   #rightc{gap:6px}
