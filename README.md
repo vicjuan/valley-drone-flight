@@ -6,6 +6,8 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 
 **▶ 線上玩 Play：<https://vicjuan.github.io/valley-drone-flight/>**（電腦、iPhone、iPad 都可以）
 
+**♪ 音樂 App：<https://vicjuan.github.io/valley-drone-flight/player/>**（五首原創曲，每首都有 3D 動畫，關掉螢幕也能聽）
+
 ![遊戲畫面](docs/screenshot.jpg)
 
 ## 場景
@@ -58,6 +60,22 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 
 也支援遊戲手把（美國手 Mode 2 配置），LB／RB 是快慢桿。
 
+## 音樂 App「空拍音樂」
+
+`player/` 是一個獨立的音樂播放器，放的是遊戲裡的五首歌，每一首都有自己的 3D 動畫，畫面跟著拍子動：
+
+| 歌 | 動畫 |
+| --- | --- |
+| 〈飛上天空〉 | 無人機從河邊停機坪起飛，沿著山谷往前飛 |
+| 〈沙丘駝鈴〉 | 夕陽下的駱駝商隊走過沙丘，經過綠洲，無人機在上空繞著拍 |
+| 〈夜空巡航〉 | 霓虹網格、線條山、條紋夕陽，無人機拖著兩道光 |
+| 〈冒險出發〉 | 高速穿過紅岩峽谷，每 16 小節翻滾一圈 |
+| 〈雲上散步〉 | 日出時的雲海，無人機照三拍子搖擺 |
+
+- 時間底下有上一首、播放／暫停、下一首；一首播完自動接下一首。
+- 音樂用手機一般播放音樂的方式播，用 Safari 開的時候，關掉螢幕或切到別的 App 都會繼續播，鎖定畫面上可以暫停和切歌。
+- 變成 App：在 iPhone、iPad 用 Safari 打開網址，按「分享」→「加入主畫面」，主畫面就會出現「空拍音樂」圖示；Android 用 Chrome 選「加到主畫面」。
+
 ## 執行
 
 - 直接用瀏覽器打開 `index.html` 就能玩，需要網路來載入 three.js 和字型。
@@ -98,6 +116,7 @@ index.html             頁面和介面
 manifest.webmanifest   加入主畫面用的設定
 icons/                 主畫面圖示
 music/                 五首背景音樂
+player/                音樂 App「空拍音樂」（播放器和五段 3D 動畫）
 style.css              樣式
 src/core.js            兩個場景的地形、風、訊號、電量、飛行模型、自動返航、任務規則（不碰畫面）
 src/desert.js          沙漠場景：棕櫚樹、地標、揚沙、沙牆崩塌、會倒的土磚牆
