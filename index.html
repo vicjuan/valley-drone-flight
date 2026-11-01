@@ -203,6 +203,7 @@
         <h4>音量</h4>
         <div class="vol"><label for="volMusic">背景音樂</label><input type="range" id="volMusic" min="0" max="100" step="5"><output id="volMusicV" for="volMusic">80</output></div>
         <div class="vol"><label for="volDrone">無人機聲音</label><input type="range" id="volDrone" min="0" max="100" step="5"><output id="volDroneV" for="volDrone">35</output></div>
+        <div class="vol"><label for="trackSel">曲目</label><select id="trackSel"><option value="song">〈飛上天空〉</option><option value="gen">遊戲原本的配樂</option></select></div>
       </div>
       <div class="ctrls" id="ctrlHelp2"></div>
     </div>
@@ -254,6 +255,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>window.SONG_SRC = 'music/fly-up.mp3';</script>
 <script src="src/core.js"></script>
 <script src="src/desert.js"></script>
 <script src="src/game.js"></script>

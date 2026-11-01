@@ -84,7 +84,8 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 - [three.js](https://threejs.org/) r128（WebGL），地形、水面、天空、瀑布是自己寫的 GLSL shader
 - 地形用雜訊函數程序化產生，並預先算好陰影；沙漠的沙牆崩塌是即時把地形網格鬆弛到沙的安息角
 - 飛行模型、風、電量、訊號遮擋、自動返航、碰撞都是自己寫的
-- Web Audio API 即時合成螺旋槳聲、風聲、水聲、音效和背景音樂
+- 背景音樂是原創曲〈飛上天空〉（`music/fly-up.mp3`，同樣是用程式合成的）；暫停畫面也可以換回即時合成的配樂
+- Web Audio API 即時合成螺旋槳聲、風聲、水聲和音效
 - Web Speech API 播放中文語音提示（需要裝置有中文語音）
 - Canvas 2D 產生岩石紋理、小地圖、羅盤和照片
 - 鍵盤、Pointer Events（滑鼠／觸控搖桿）、Gamepad API
@@ -95,6 +96,7 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 index.html             頁面和介面
 manifest.webmanifest   加入主畫面用的設定
 icons/                 主畫面圖示
+music/fly-up.mp3       背景音樂〈飛上天空〉
 style.css              樣式
 src/core.js            兩個場景的地形、風、訊號、電量、飛行模型、自動返航、任務規則（不碰畫面）
 src/desert.js          沙漠場景：棕櫚樹、地標、揚沙、沙牆崩塌、會倒的土磚牆
@@ -108,4 +110,4 @@ docs/                  說明用的截圖
 
 - three.js（MIT）由 cdnjs 載入
 - 字型 Noto Sans TC、Noto Serif TC、Azeret Mono（SIL Open Font License）由 Google Fonts 載入
-- 地形、模型、紋理、音樂和音效都由程式產生，沒有使用外部素材
+- 地形、模型、紋理、音樂（包括〈飛上天空〉）和音效都由程式產生，沒有使用外部素材

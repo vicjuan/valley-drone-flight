@@ -1036,6 +1036,7 @@
         const meterAll = ac.createAnalyser(); meterAll.fftSize = 2048; comp.connect(meterAll);
         audio = { ac, master, motorBus, oscs, whine, lfo, wash, wind, windF, water, sand, white, music: { out: musicOut, bus, echo, padF, meter }, meterAll };
         musicNext = ac.currentTime + 0.1;
+        loadSong();
       } catch (e) { audio = null; }
     }
     function tone(freq, dur, o) {
@@ -1186,12 +1187,38 @@
       if (state === 'ended') return 0;
       return state === 'title' ? 0.85 : 0.75;
     }
+    /* ---------- the song 〈飛上天空〉: a finished recording that plays (looping) instead of the generated music ---------- */
+    const SONG_LEVEL = 0.42;
+    let track = store.get('drone-track') === 'gen' ? 'gen' : 'song';
+    const song = { buf: null, src: null, gain: null, loading: false, failed: !window.SONG_SRC };
+    function loadSong() {
+      if (!audio || song.buf || song.loading || song.failed || track !== 'song') return;
+      song.loading = true;
+      const src = String(window.SONG_SRC);
+      const bytes = src.startsWith('data:')
+        ? Promise.resolve().then(() => { const bin = atob(src.slice(src.indexOf(',') + 1)), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; })
+        : fetch(src).then(r => { if (!r.ok) throw new Error('no song'); return r.arrayBuffer(); });
+      bytes.then(ab => new Promise((res, rej) => audio.ac.decodeAudioData(ab, res, rej)))
+        .then(buf => { song.buf = buf; song.loading = false; startSong(); })
+        .catch(() => { song.loading = false; song.failed = true; }); // fall back to the generated music
+    }
+    function startSong() {
+      if (!audio || !song.buf || song.src) return;
+      song.gain = audio.ac.createGain(); song.gain.gain.value = track === 'song' ? SONG_LEVEL : 0; song.gain.connect(audio.music.out);
+      song.src = audio.ac.createBufferSource(); song.src.buffer = song.buf; song.src.loop = true; song.src.connect(song.gain); song.src.start();
+    }
+    function setTrack(v) {
+      track = v === 'gen' ? 'gen' : 'song'; store.set('drone-track', track);
+      if (audio && song.gain) song.gain.gain.setTargetAtTime(track === 'song' ? SONG_LEVEL : 0, audio.ac.currentTime, 0.3);
+      if (track === 'song') { startAudio(); loadSong(); }
+    }
+    { const sel = $('trackSel'); sel.value = track; sel.addEventListener('change', () => setTrack(sel.value)); }
     setInterval(() => {
       if (!audio || audio.ac.state !== 'running') return;
       const ac = audio.ac, want = musicTarget();
       const wantGain = want * 2.4 * musicVol;
       if (Math.abs(wantGain - musicLevel) > 0.001) { musicLevel = wantGain; audio.music.out.gain.setTargetAtTime(wantGain, ac.currentTime, want > 0 ? (wantGain > 0 && musicLevel > 0 ? 0.25 : 1.2) : 0.4); }
-      if (wantGain === 0) { musicNext = Math.max(musicNext, ac.currentTime); return; }
+      if (wantGain === 0 || (track === 'song' && !song.failed)) { musicNext = Math.max(musicNext, ac.currentTime); return; } // the song is playing (or still loading)
       musicMode = state === 'title' || drone.landed ? 'calm' : alarmKind ? 'tense' : mission.stage === 2 && inRecordZone(drone) ? 'rec' : 'fly';
       if (musicNext < ac.currentTime) musicNext = ac.currentTime + 0.05;
       while (musicNext < ac.currentTime + 0.35) { scheduleStep(musicStep, musicNext); musicNext += MUSIC_STEP; musicStep++; }
