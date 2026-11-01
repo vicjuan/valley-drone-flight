@@ -88,6 +88,14 @@
     <div class="t" id="tBattWrap"><em>電量</em><div class="bbar"><i id="tBattFill"></i><u id="tBattNeed" title="返航所需電量"></u></div><b id="tBatt">100</b><small>%</small></div>
     <div class="t"><em>訊號</em><span class="bars" id="tBars"><i></i><i></i><i></i><i></i></span><span id="tSigTxt" hidden>斷線</span></div>
     <div class="t hide-touch"><em>時間</em><b id="tTime">0:00</b></div>
+    <div class="mp" id="mp">
+      <span class="mpname" id="mpName">♪ 飛上天空</span><span class="mptime" id="mpTime">0:00 / 0:00</span>
+      <span class="mpbtns">
+        <button type="button" id="mpPrev" aria-label="上一首"><svg viewBox="0 0 24 24"><path d="M6 5h3v14H6zM20 5v14L9.5 12z"/></svg></button>
+        <button type="button" id="mpPlay" class="play" aria-label="暫停音樂"><svg viewBox="0 0 24 24"><path id="mpPlayIco" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+        <button type="button" id="mpNext" aria-label="下一首"><svg viewBox="0 0 24 24"><path d="M15 5h3v14h-3zM4 5v14l10.5-7z"/></svg></button>
+      </span>
+    </div>
   </div>
   <div class="ov glass" id="viewName">追蹤視角</div>
 
@@ -167,7 +175,8 @@
             <tr><td><kbd class="k">↑</kbd><kbd class="k">↓</kbd></td><td>前進／後退</td></tr>
             <tr><td><kbd class="k">←</kbd><kbd class="k">→</kbd></td><td>向左／向右平移</td></tr>
             <tr><td><kbd class="k">H</kbd> <kbd class="k">C</kbd> <kbd class="k">P</kbd></td><td>返航、切換視角、暫停</td></tr>
-            <tr><td><kbd class="k">M</kbd> <kbd class="k">N</kbd></td><td>全部聲音開關、背景音樂開關（暫停畫面可調音量）</td></tr>
+            <tr><td><kbd class="k">M</kbd> <kbd class="k">N</kbd></td><td>全部聲音開關、背景音樂播放／暫停（暫停畫面可調音量）</td></tr>
+            <tr><td><kbd class="k">[</kbd> <kbd class="k">]</kbd></td><td>上一首／下一首（下方時間底下也有按鈕）</td></tr>
           </table>
         </section>
         <section id="helpTouch">
@@ -203,7 +212,7 @@
         <h4>音量</h4>
         <div class="vol"><label for="volMusic">背景音樂</label><input type="range" id="volMusic" min="0" max="100" step="5"><output id="volMusicV" for="volMusic">80</output></div>
         <div class="vol"><label for="volDrone">無人機聲音</label><input type="range" id="volDrone" min="0" max="100" step="5"><output id="volDroneV" for="volDrone">35</output></div>
-        <div class="vol"><label for="trackSel">曲目</label><select id="trackSel"><option value="song">〈飛上天空〉</option><option value="gen">遊戲原本的配樂</option></select></div>
+        <div class="vol"><label for="trackSel">曲目</label><select id="trackSel"></select></div>
       </div>
       <div class="ctrls" id="ctrlHelp2"></div>
     </div>
@@ -255,7 +264,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>window.SONG_SRC = 'music/fly-up.mp3';</script>
+<script>window.SONGS = [{"title": "飛上天空", "src": "music/fly-up.mp3"}, {"title": "沙丘駝鈴", "src": "music/dune.mp3"}, {"title": "夜空巡航", "src": "music/night.mp3"}, {"title": "冒險出發", "src": "music/adventure.mp3"}, {"title": "雲上散步", "src": "music/clouds.mp3"}];</script>
 <script src="src/core.js"></script>
 <script src="src/desert.js"></script>
 <script src="src/game.js"></script>

@@ -899,6 +899,8 @@
         else if (e.code === 'KeyP' || e.code === 'Escape') setPaused(true);
         else if (e.code === 'KeyM') toggleSound();
         else if (e.code === 'KeyN') toggleMusic();
+        else if (e.code === 'BracketLeft') prevTrack();
+        else if (e.code === 'BracketRight') nextTrack(false);
         else if (e.code === 'KeyT') autoTakeoff();
         else if (e.code === 'KeyL') autoLand();
         else if (e.code === 'KeyF') takePhoto();
@@ -1036,7 +1038,7 @@
         const meterAll = ac.createAnalyser(); meterAll.fftSize = 2048; comp.connect(meterAll);
         audio = { ac, master, motorBus, oscs, whine, lfo, wash, wind, windF, water, sand, white, music: { out: musicOut, bus, echo, padF, meter }, meterAll };
         musicNext = ac.currentTime + 0.1;
-        loadSong();
+        if (musicOn) playCurrent(player.offset);
       } catch (e) { audio = null; }
     }
     function tone(freq, dur, o) {
@@ -1187,53 +1189,107 @@
       if (state === 'ended') return 0;
       return state === 'title' ? 0.85 : 0.75;
     }
-    /* ---------- the song 〈飛上天空〉: a finished recording that plays (looping) instead of the generated music ---------- */
+    /* ---------- the music player: original songs (plus the generated soundtrack); previous / play-pause / next ---------- */
     const SONG_LEVEL = 0.42;
-    let track = store.get('drone-track') === 'gen' ? 'gen' : 'song';
-    const song = { buf: null, src: null, gain: null, loading: false, failed: !window.SONG_SRC };
-    function loadSong() {
-      if (!audio || song.buf || song.loading || song.failed || track !== 'song') return;
-      song.loading = true;
-      const src = String(window.SONG_SRC);
-      const bytes = src.startsWith('data:')
-        ? Promise.resolve().then(() => { const bin = atob(src.slice(src.indexOf(',') + 1)), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; })
-        : fetch(src).then(r => { if (!r.ok) throw new Error('no song'); return r.arrayBuffer(); });
-      bytes.then(ab => new Promise((res, rej) => audio.ac.decodeAudioData(ab, res, rej)))
-        .then(buf => { song.buf = buf; song.loading = false; startSong(); })
-        .catch(() => { song.loading = false; song.failed = true; }); // fall back to the generated music
+    const TRACKS = (window.SONGS || []).map(s => ({ title: s.title, src: s.src })).concat([{ title: '遊戲原本的配樂', gen: true }]);
+    let cur = Math.min(TRACKS.length - 1, Math.max(0, parseInt(store.get('drone-track-i') || '0', 10) || 0));
+    const player = { buf: null, bufI: -1, src: null, gain: null, startAt: 0, offset: 0, loadingI: -1, failed: {} };
+    const isSong = i => !TRACKS[i].gen && !player.failed[i];
+    function trackBytes(i) {
+      const src = String(TRACKS[i].src);
+      if (src.startsWith('data:')) return Promise.resolve().then(() => { const bin = atob(src.slice(src.indexOf(',') + 1)), u = new Uint8Array(bin.length); for (let j = 0; j < bin.length; j++) u[j] = bin.charCodeAt(j); return u.buffer; });
+      return fetch(src).then(r => { if (!r.ok) throw new Error('no song'); return r.arrayBuffer(); });
     }
-    function startSong() {
-      if (!audio || !song.buf || song.src) return;
-      song.gain = audio.ac.createGain(); song.gain.gain.value = track === 'song' ? SONG_LEVEL : 0; song.gain.connect(audio.music.out);
-      song.src = audio.ac.createBufferSource(); song.src.buffer = song.buf; song.src.loop = true; song.src.connect(song.gain); song.src.start();
+    function songPos() {
+      if (!player.src || !audio) return player.offset;
+      const d = player.buf ? player.buf.duration : 0;
+      return Math.min(d, Math.max(0, audio.ac.currentTime - player.startAt));
     }
-    function setTrack(v) {
-      track = v === 'gen' ? 'gen' : 'song'; store.set('drone-track', track);
-      if (audio && song.gain) song.gain.gain.setTargetAtTime(track === 'song' ? SONG_LEVEL : 0, audio.ac.currentTime, 0.3);
-      if (track === 'song') { startAudio(); loadSong(); }
+    function stopSource() {
+      if (!player.src) return;
+      const s = player.src, g = player.gain, now = audio.ac.currentTime;
+      player.src = null; player.gain = null; // onended of this source is ignored from now on
+      try { g.gain.setTargetAtTime(0, now, 0.04); s.stop(now + 0.2); } catch (e) { /* ignore */ }
     }
-    { const sel = $('trackSel'); sel.value = track; sel.addEventListener('change', () => setTrack(sel.value)); }
+    function startSource(offset) {
+      if (!audio || !player.buf || !musicOn) { player.offset = offset; return; }
+      const g = audio.ac.createGain(); g.gain.value = SONG_LEVEL; g.connect(audio.music.out);
+      const s = audio.ac.createBufferSource(); s.buffer = player.buf; s.connect(g);
+      s.onended = () => { if (player.src === s) { player.src = null; nextTrack(true); } }; // the song finished: play the next one
+      const off = Math.min(Math.max(0, offset), Math.max(0, player.buf.duration - 0.05));
+      s.start(0, off); player.src = s; player.gain = g; player.startAt = audio.ac.currentTime - off; player.offset = off;
+    }
+    function playCurrent(offset) {
+      if (audio) stopSource();
+      player.offset = offset || 0;
+      updatePlayer(true);
+      if (!audio || !musicOn || !isSong(cur)) return;
+      if (player.bufI === cur && player.buf) { startSource(player.offset); return; }
+      const want = cur;
+      if (player.loadingI === want) return;
+      player.loadingI = want; player.buf = null; player.bufI = -1; // only one song is kept decoded, to save memory
+      trackBytes(want).then(ab => new Promise((res, rej) => audio.ac.decodeAudioData(ab, res, rej)))
+        .then(buf => { if (player.loadingI === want) player.loadingI = -1; if (cur !== want) return; player.buf = buf; player.bufI = want; startSource(player.offset); updatePlayer(true); })
+        .catch(() => { if (player.loadingI === want) player.loadingI = -1; player.failed[want] = true; updatePlayer(true); }); // falls back to the generated music
+    }
+    function selectTrack(i, announce) {
+      cur = (i + TRACKS.length) % TRACKS.length; store.set('drone-track-i', String(cur));
+      playCurrent(0);
+      if (announce) toast(`♪ ${TRACKS[cur].gen ? TRACKS[cur].title : '〈' + TRACKS[cur].title + '〉'}`, 1.8);
+      $('trackSel').value = String(cur);
+    }
+    function nextTrack(auto) {
+      let i = cur;
+      for (let k = 0; k < TRACKS.length; k++) { i = (i + 1) % TRACKS.length; if (!auto || isSong(i)) break; } // when a song ends, the next song (not the endless soundtrack)
+      selectTrack(i, !auto);
+    }
+    function prevTrack() {
+      if (isSong(cur) && songPos() > 3) { playCurrent(0); return; } // a few seconds in: back to the start of this song
+      selectTrack(cur - 1, true);
+    }
+    function setMusicOn(on, quiet) {
+      if (on === musicOn) return;
+      if (!on) { player.offset = songPos(); if (audio) stopSource(); }
+      musicOn = on; store.set('drone-music', on ? '1' : '0'); setMusicIcon();
+      if (on) { startAudio(); playCurrent(player.offset); }
+      updatePlayer(true);
+      if (!quiet) toast(on ? '背景音樂：開' : '背景音樂：暫停', 1.4);
+    }
+    const ICON_PLAY = 'M7 5v14l12-7z', ICON_PAUSE = 'M7 5h4v14H7zM13 5h4v14h-4z';
+    let mpLast = '';
+    const fmtS = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+    function updatePlayer(force) {
+      const tr = TRACKS[cur], loading = player.loadingI === cur;
+      const time = tr.gen || player.failed[cur] ? '即時合成' : loading ? '載入中⋯' : `${fmtS(songPos())} / ${fmtS(player.bufI === cur && player.buf ? player.buf.duration : 0)}`;
+      const key = cur + '|' + musicOn + '|' + time;
+      if (!force && key === mpLast) return; mpLast = key;
+      $('mpName').textContent = (tr.gen ? '' : '♪ ') + tr.title; $('mpTime').textContent = time;
+      $('mpPlayIco').setAttribute('d', musicOn ? ICON_PAUSE : ICON_PLAY);
+      $('mpPlay').setAttribute('aria-label', musicOn ? '暫停音樂' : '播放音樂');
+      $('mp').classList.toggle('off', !musicOn);
+    }
+    { const sel = $('trackSel'); sel.innerHTML = TRACKS.map((t, i) => `<option value="${i}">${t.gen ? t.title : '〈' + t.title + '〉'}</option>`).join(''); sel.value = String(cur);
+      sel.addEventListener('change', () => { startAudio(); selectTrack(parseInt(sel.value, 10), false); }); }
+    const tap = (id, fn) => $(id).addEventListener('click', e => { e.preventDefault(); startAudio(); fn(); });
+    tap('mpPrev', prevTrack); tap('mpNext', () => nextTrack(false)); tap('mpPlay', () => setMusicOn(!musicOn));
     setInterval(() => {
+      updatePlayer(false);
       if (!audio || audio.ac.state !== 'running') return;
       const ac = audio.ac, want = musicTarget();
       const wantGain = want * 2.4 * musicVol;
       if (Math.abs(wantGain - musicLevel) > 0.001) { musicLevel = wantGain; audio.music.out.gain.setTargetAtTime(wantGain, ac.currentTime, want > 0 ? (wantGain > 0 && musicLevel > 0 ? 0.25 : 1.2) : 0.4); }
-      if (wantGain === 0 || (track === 'song' && !song.failed)) { musicNext = Math.max(musicNext, ac.currentTime); return; } // the song is playing (or still loading)
+      if (wantGain === 0 || isSong(cur)) { musicNext = Math.max(musicNext, ac.currentTime); return; } // a song is playing (or loading)
       musicMode = state === 'title' || drone.landed ? 'calm' : alarmKind ? 'tense' : mission.stage === 2 && inRecordZone(drone) ? 'rec' : 'fly';
       if (musicNext < ac.currentTime) musicNext = ac.currentTime + 0.05;
       while (musicNext < ac.currentTime + 0.35) { scheduleStep(musicStep, musicNext); musicNext += MUSIC_STEP; musicStep++; }
     }, 30);
-    function toggleMusic() {
-      musicOn = !musicOn; store.set('drone-music', musicOn ? '1' : '0'); setMusicIcon();
-      if (musicOn) startAudio();
-      toast(musicOn ? '背景音樂：開' : '背景音樂：關', 1.4);
-    }
+    function toggleMusic() { setMusicOn(!musicOn); }
     function setupVolume(id, get, setv, key) {
       const el = $(id), out = $(id + 'V');
       el.value = Math.round(get() * 100); out.textContent = el.value;
       el.addEventListener('input', () => { setv(el.value / 100); out.textContent = el.value; store.set(key, el.value); startAudio(); });
     }
-    setupVolume('volMusic', () => musicVol, v => { musicVol = v; if (v > 0 && !musicOn) { musicOn = true; setMusicIcon(); } }, 'drone-vol-music');
+    setupVolume('volMusic', () => musicVol, v => { musicVol = v; if (v > 0 && !musicOn) setMusicOn(true, true); }, 'drone-vol-music');
     setupVolume('volDrone', () => droneVol, v => { droneVol = v; }, 'drone-vol-drone');
     function setMusicIcon() { $('bMusic').classList.toggle('on', musicOn); $('bMusic').setAttribute('aria-label', musicOn ? '關掉背景音樂' : '打開背景音樂'); const l = $('bMusic').querySelector('.bl'); if (l) l.textContent = musicOn ? '音樂開' : '音樂關'; }
     setMusicIcon();

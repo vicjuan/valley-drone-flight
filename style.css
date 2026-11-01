@@ -113,6 +113,17 @@ button{font-family:inherit}
 .bars i.on{background:var(--ok)}
 .bars.weak i.on{background:var(--warn)}
 #tSigTxt{font:700 12px/1 var(--f-body);color:var(--crit)}
+/* the music player row under the flight time: song, time, previous / play-pause / next */
+#tele{z-index:3}
+.mp{flex-basis:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 6px 1px;margin-top:3px;border-top:1px solid var(--line);min-width:0}
+.mpname{font:600 12.5px/1.2 var(--f-body);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:10em}
+.mptime{font:600 12px/1 var(--f-data);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mpbtns{display:flex;gap:5px;pointer-events:auto;flex:none}
+.mpbtns button{appearance:none;border:1px solid var(--line);background:rgba(255,255,255,.1);color:#fff;width:36px;height:30px;border-radius:8px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;padding:0}
+.mpbtns button svg{width:16px;height:16px;fill:currentColor}
+.mpbtns button.play{background:var(--target);color:#1b1006;border-color:transparent}
+.mpbtns button:active{transform:translateY(1px);filter:brightness(.9)}
+.mp.off .mpname,.mp.off .mptime{opacity:.55}
 
 /* world labels */
 .label{left:0;top:0;will-change:transform;white-space:nowrap;font:600 12.5px/1 var(--f-body);padding:5px 8px;border-radius:7px;transform:translate(-50%,-50%)}
@@ -290,7 +301,7 @@ kbd.k{display:inline-block;min-width:1.6em;text-align:center;font:600 11.5px/1 v
 @keyframes rot{to{transform:rotate(360deg)}}
 
 /* stick layout: flight data sits between the two sticks */
-.sticks #toast{bottom:calc(var(--inset-b) + 96px)}
+.sticks #toast{bottom:calc(var(--inset-b) + 140px)}
 .sticks #tele{bottom:var(--inset-b);flex-wrap:wrap;justify-content:center;max-width:min(440px,46%);padding:4px 6px}
 .sticks .t{padding:3px 7px}
 .sticks .t b{font-size:14px}
@@ -324,7 +335,7 @@ kbd.k{display:inline-block;min-width:1.6em;text-align:center;font:600 11.5px/1 v
   .ud{height:44px;min-width:0;padding:0 11px;font-size:14px}
   .updown{gap:6px}
   #toast{bottom:calc(var(--inset-b) + 70px)}
-  .sticks #toast{bottom:calc(var(--inset-b) + 290px)}
+  .sticks #toast{bottom:calc(var(--inset-b) + 332px)}
   #tele,.sticks #tele{bottom:var(--inset-b);max-width:calc(100% - 28px)}
   .sticks #tele{bottom:calc(var(--inset-b) + 192px)}
 }

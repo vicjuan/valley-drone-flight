@@ -52,6 +52,7 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 | 切換視角 | C | 「視角」（追蹤、機載鏡頭、操作員） |
 | 暫停（可調音量） | P 或 Esc | 暫停鍵 |
 | 聲音／背景音樂 | M／N | 喇叭鍵／音樂鍵 |
+| 上一首／下一首 | [／] | 下方時間底下的 ⏮ ⏯ ⏭ |
 
 左上角的速度表顯示水平速度（m/s 和 km/h），旁邊的直條是上升或下降的速度；快慢桿設定的速度會在錶上用橘色小三角標出來。
 
@@ -84,7 +85,7 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 - [three.js](https://threejs.org/) r128（WebGL），地形、水面、天空、瀑布是自己寫的 GLSL shader
 - 地形用雜訊函數程序化產生，並預先算好陰影；沙漠的沙牆崩塌是即時把地形網格鬆弛到沙的安息角
 - 飛行模型、風、電量、訊號遮擋、自動返航、碰撞都是自己寫的
-- 背景音樂是原創曲〈飛上天空〉（`music/fly-up.mp3`，同樣是用程式合成的）；暫停畫面也可以換回即時合成的配樂
+- 五首原創背景音樂（`music/` 資料夾）：〈飛上天空〉〈沙丘駝鈴〉〈夜空巡航〉〈冒險出發〉〈雲上散步〉，也都是用程式一個音一個音合成的；一首播完自動接下一首，暫停畫面也可以選曲或換回即時合成的配樂
 - Web Audio API 即時合成螺旋槳聲、風聲、水聲和音效
 - Web Speech API 播放中文語音提示（需要裝置有中文語音）
 - Canvas 2D 產生岩石紋理、小地圖、羅盤和照片
@@ -96,7 +97,7 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 index.html             頁面和介面
 manifest.webmanifest   加入主畫面用的設定
 icons/                 主畫面圖示
-music/fly-up.mp3       背景音樂〈飛上天空〉
+music/                 五首背景音樂
 style.css              樣式
 src/core.js            兩個場景的地形、風、訊號、電量、飛行模型、自動返航、任務規則（不碰畫面）
 src/desert.js          沙漠場景：棕櫚樹、地標、揚沙、沙牆崩塌、會倒的土磚牆
