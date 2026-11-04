@@ -93,6 +93,10 @@ h1{margin:0;font:900 clamp(28px,7vw,38px)/1.15 var(--f-display);text-wrap:balanc
 .controls button:hover{filter:brightness(1.12)}
 .controls button:active{transform:translateY(1px) scale(.98)}
 .controls button:focus-visible,.track:focus-visible{outline:2px solid var(--sky);outline-offset:3px}
+.controls .spacer{width:46px;flex:none}
+.controls button.rep{width:46px;height:46px;border-radius:12px;background:transparent;color:var(--muted)}
+.controls button.rep svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.controls button.rep[aria-pressed="true"]{color:var(--target);border-color:var(--target);background:rgba(255,154,60,.13)}
 .state{min-height:1.4em;text-align:center;color:var(--muted);font-size:13px}
 .keys{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;color:var(--muted);font-size:12.5px}
 kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 5px;color:var(--fg);background:var(--panel-2)}
@@ -116,7 +120,7 @@ kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-w
 .eq i:nth-child(2){animation-delay:-.3s!important}.eq i:nth-child(3){animation-delay:-.6s!important}
 @keyframes eq{0%{height:25%}100%{height:100%}}
 @media (max-width:540px){.stage{aspect-ratio:4/3}.deck{padding:8px 8px 18px}}
-@media (max-width:400px){.controls{gap:12px}.controls button{width:58px;height:52px}.controls button.play{width:76px;height:64px}}
+@media (max-width:400px){.controls{gap:10px}.controls button{width:58px;height:52px}.controls button.play{width:76px;height:64px}.controls .spacer,.controls button.rep{width:40px}.controls button.rep{height:42px}}
 @media (hover:none) and (pointer:coarse){.keys{display:none}}
 @media (prefers-reduced-motion:reduce){.playing .track[aria-current="true"] .eq i{animation:none;height:70%}}
 </style>
@@ -126,7 +130,7 @@ kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-w
   <header>
     <div class="toprow"><span class="eyebrow">山谷空拍・遊戲原聲帶</span><a class="back" href="../">玩遊戲 →</a></div>
     <h1>山谷空拍音樂</h1>
-    <p class="sub">五首原創曲，全長 <span id="total">9:58</span>，每一首都有自己的 3D 動畫。一首播完自動接下一首，關掉螢幕也會繼續播，鎖定畫面上可以暫停和切歌。</p>
+    <p class="sub">五首原創曲，全長 <span id="total">9:58</span>，每一首都有自己的 3D 動畫。一首播完自動接下一首，按右邊的循環鍵就會一直重播同一首。關掉螢幕也會繼續播，鎖定畫面上可以暫停和切歌。</p>
     <p class="install" id="install" hidden>變成手機上的 App：用 <b>Safari</b> 打開這一頁，按下方的「分享」，再選「<b>加入主畫面</b>」。之後從主畫面的「空拍音樂」圖示打開就好。</p>
   </header>
 
@@ -147,12 +151,14 @@ kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-w
       <input type="range" id="seek" min="0" max="141" step="0.1" value="0" aria-label="播放位置">
       <div class="clock"><span id="now">0:00</span><span class="slash">/</span><span class="total" id="dur">2:21</span></div>
       <div class="controls">
+        <span class="spacer" aria-hidden="true"></span>
         <button type="button" id="prev" aria-label="上一首"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h3v14H5zM20 5v14L9 12z"/></svg></button>
         <button type="button" id="play" class="play" aria-label="播放"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="playIco" d="M7 4.5v15L19.5 12z"/></svg></button>
         <button type="button" id="next" aria-label="下一首"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h3v14h-3zM4 5v14l11-7z"/></svg></button>
+        <button type="button" id="rep" class="rep" aria-pressed="false" aria-label="單曲循環" title="單曲循環（R）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2.5l3 3-3 3"/><path d="M4 11.5v-2a4 4 0 0 1 4-4h12"/><path d="M7 21.5l-3-3 3-3"/><path d="M20 12.5v2a4 4 0 0 1-4 4H4"/><path d="M11 10.5l1.5-1v5.5"/></svg></button>
       </div>
       <div class="state" id="state">按播放鍵開始</div>
-      <div class="keys"><span><kbd>空白鍵</kbd> 播放／暫停</span><span><kbd>[</kbd> <kbd>]</kbd> 上一首／下一首</span><span><kbd>←</kbd> <kbd>→</kbd> 倒退／快轉 5 秒</span></div>
+      <div class="keys"><span><kbd>空白鍵</kbd> 播放／暫停</span><span><kbd>[</kbd> <kbd>]</kbd> 上一首／下一首</span><span><kbd>←</kbd> <kbd>→</kbd> 倒退／快轉 5 秒</span><span><kbd>R</kbd> 單曲循環</span></div>
     </div>
   </section>
 
@@ -174,11 +180,14 @@ kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-w
 
   let cur = 0;
   try { const v = +localStorage.getItem('valley-music-track'); if (v >= 0 && v < n) cur = v; } catch (e) {}
+  let repeatOne = false;
+  try { repeatOne = localStorage.getItem('valley-music-repeat') === '1'; } catch (e) {}
   let playing = false, loading = false, drag = null, level = 0, pendingSeek = null, loadedI = -1, started = false;
 
   const audio = document.createElement('audio');
   audio.preload = 'metadata';
   audio.setAttribute('playsinline', ''); audio.setAttribute('webkit-playsinline', '');
+  audio.loop = repeatOne;  // single-song repeat: the phone loops the song itself, also with the screen off
   document.body.appendChild(audio);
 
   $('total').textContent = fmt(SONGS.reduce((a, s) => a + s.dur, 0));
@@ -246,7 +255,7 @@ kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-w
   audio.addEventListener('playing', () => { playing = true; loading = false; ui(); posState(); });
   audio.addEventListener('waiting', () => { if (!audio.paused) { loading = true; ui(); } });
   audio.addEventListener('pause', () => { playing = false; loading = false; ui(); posState(); });
-  audio.addEventListener('ended', () => { playing = false; next(); });
+  audio.addEventListener('ended', () => { playing = false; if (repeatOne) play(cur, 0); else next(); });
   audio.addEventListener('seeked', posState);
   audio.addEventListener('error', () => { if (!started) return; playing = false; loading = false; ui(); $('state').textContent = '這首歌載入失敗，請檢查網路，或按「下一首」換一首'; });
 
@@ -274,13 +283,21 @@ kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-w
     $('cover').classList.toggle('gone', busy);
     document.body.classList.toggle('playing', playing);
     SONGS.forEach((_, i) => $('trk' + i).setAttribute('aria-current', i === cur ? 'true' : 'false'));
-    $('state').textContent = loading ? '載入中…' : playing ? '播放中' : (started ? '已暫停' : '按播放鍵開始');
+    $('rep').setAttribute('aria-pressed', repeatOne ? 'true' : 'false');
+    $('state').textContent = loading ? '載入中…' : playing ? (repeatOne ? '播放中・單曲循環' : '播放中') : (started ? '已暫停' : '按播放鍵開始');
     if (ms) { try { ms.playbackState = playing ? 'playing' : 'paused'; } catch (e) {} }
     tick(true);
   }
 
   $('play').addEventListener('click', toggle);
   $('next').addEventListener('click', next);
+  function toggleRepeat() {
+    repeatOne = !repeatOne; audio.loop = repeatOne;
+    try { localStorage.setItem('valley-music-repeat', repeatOne ? '1' : '0'); } catch (e) {}
+    ui();
+    $('state').textContent = repeatOne ? '單曲循環：開，這首會一直重播' : '單曲循環：關，播完接下一首';
+  }
+  $('rep').addEventListener('click', toggleRepeat);
   $('prev').addEventListener('click', prev);
   $('stage').addEventListener('click', toggle);
   const seekEl = $('seek');
@@ -293,6 +310,7 @@ kbd{font:600 11.5px/1 var(--f-data);border:1px solid var(--line);border-bottom-w
     if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); toggle(); }
     else if (e.key === ']') next();
     else if (e.key === '[') prev();
+    else if (e.key === 'r' || e.key === 'R') toggleRepeat();
     else if (e.key === 'ArrowRight') { e.preventDefault(); seek(pos() + 5); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); seek(pos() - 5); }
   });
