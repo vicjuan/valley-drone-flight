@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>山區飛行教學</title>
+<meta name="description" content="立體動畫教學：白色無人機在山區遇到強風、沒電、收不到訊號時會怎麼做，有中文語音旁白。">
+<meta name="theme-color" content="#0c1218">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="飛行教學">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&display=swap">
+<style>
+/* Layout: one film frame (16:9, 4:5 on phones) holding a WebGL scene, with a slim player bar and chapter strip under it.
+   Single dark screening-room look, chosen on purpose so the bright 3D mountains carry the colour. */
+:root{
+  --bg:#0c1218;
+  --panel:#141c24;
+  --line:#25303b;
+  --text:#e6edf2;
+  --muted:#8d9cab;
+  --white:#f5f8fa;
+  --sky:#8fc3ee;
+  --ok:#5fd396;
+  --warn:#f3b04a;
+  --crit:#ff675a;
+  --f-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Heiti TC",system-ui,sans-serif;
+  --f-data:"Azeret Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--text);margin:0}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  font-family:var(--f-body);font-size:14px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:max(20px,calc(env(safe-area-inset-top,0px) + 10px));padding-bottom:max(36px,calc(env(safe-area-inset-bottom,0px) + 20px));
+}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 16px}
+.head h1{margin:0;font:700 clamp(18px,2.4vw,24px)/1.3 var(--f-display);letter-spacing:.05em;text-wrap:balance}
+.head p{margin:0;color:var(--muted);font-size:13px;min-width:0}
+
+.frame{
+  position:relative;width:100%;max-width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;
+  background:#0a0f14;container-type:inline-size;cursor:pointer;
+  -webkit-user-select:none;user-select:none;box-shadow:0 0 0 1px var(--line);
+  -webkit-tap-highlight-color:transparent;
+}
+@media (max-width:620px){.frame{aspect-ratio:4/5}}
+.frame:fullscreen{aspect-ratio:auto;width:100%;height:100%;border-radius:0;box-shadow:none}
+.frame:focus-visible{outline:2px solid var(--sky);outline-offset:3px}
+#gl,#gl canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ov{position:absolute;pointer-events:none}
+.grade,.fade{inset:0}
+.fade{background:#000;opacity:0}
+
+.hud{inset:0 0 auto 0;padding:clamp(8px,1.6cqw,16px);display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.row.chips{justify-content:flex-start}
+.glass{background:rgba(9,15,21,.56);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:6px}
+.chap{font:700 clamp(12px,1.45cqw,15px)/1 var(--f-body);letter-spacing:.06em;color:#fff;padding:7px 10px}
+.mode{display:inline-flex;align-items:center;gap:7px;font:700 clamp(12px,1.45cqw,15px)/1 var(--f-body);padding:7px 11px;border-radius:999px;color:#08130d;background:var(--ok)}
+.mode.warn{background:var(--warn);color:#1a1205}
+.mode.crit{background:var(--crit);color:#fff}
+.mode i{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1s infinite}
+.mode.crit i{animation-duration:.45s}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:clamp(10.5px,1.2cqw,13px);line-height:1;color:#eef3f6;padding:6px 8px}
+.chip em{font-style:normal;color:#a9b8c5}
+.chip b{font:600 1em/1 var(--f-data);font-variant-numeric:tabular-nums}
+.chip small{font:500 .9em/1 var(--f-data);color:#a9b8c5}
+.batt{position:relative;width:20px;height:10px;border:1.5px solid #cdd6dd;border-radius:2px;box-sizing:border-box}
+.batt::after{content:"";position:absolute;right:-4px;top:1.5px;width:2px;height:4px;background:#cdd6dd;border-radius:0 1px 1px 0}
+.batt span{position:absolute;left:1px;top:1px;bottom:1px;width:0;background:var(--ok);border-radius:1px}
+#chipBatt.warn .batt span{background:var(--warn)}
+#chipBatt.crit .batt span{background:var(--crit)}
+#chipBatt.warn b{color:var(--warn)}
+#chipBatt.crit b{color:var(--crit)}
+.bars{display:inline-flex;align-items:flex-end;gap:2px;height:11px}
+.bars i{width:3px;border-radius:1px;background:rgba(255,255,255,.22)}
+.bars i:nth-child(1){height:3px}.bars i:nth-child(2){height:5.5px}.bars i:nth-child(3){height:8px}.bars i:nth-child(4){height:11px}
+.bars i.on{background:var(--ok)}
+#chipSig.weak .bars i.on{background:var(--warn)}
+#chipSig b{color:var(--crit)}
+.rec i{width:7px;height:7px;border-radius:50%;background:#ff4b45;animation:blink 1s infinite}
+.ff b{color:var(--warn);font-family:var(--f-body);font-weight:700}
+@container (max-width:560px){.hide-narrow{display:none}}
+
+.alert{
+  align-self:center;margin-top:4px;padding:8px 14px;border-radius:8px;max-width:100%;text-align:center;
+  font:700 clamp(13px,1.8cqw,19px)/1.25 var(--f-body);letter-spacing:.02em;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);animation:pulse .55s ease-in-out infinite alternate;
+}
+.alert.warn{background:var(--warn);color:#1a1205}
+.alert.crit{background:var(--crit);color:#fff}
+.alert.ok{background:var(--ok);color:#06180e}
+
+/* markers that follow the drone on screen */
+.marker{left:0;top:0;will-change:transform}
+.ring{width:96px;height:96px;margin:-48px 0 0 -48px}
+.ring svg{width:100%;height:100%;overflow:visible}
+.ring .n{position:absolute;left:50%;top:-6px;transform:translateX(-50%);min-width:24px;height:24px;border-radius:12px;background:#ff5a4f;color:#fff;font:600 14px/24px var(--f-data);text-align:center}
+.lowbatt{margin:-62px 0 0 -22px;width:44px;height:24px;border-radius:7px;background:rgba(9,15,21,.62);display:grid;place-items:center}
+.lowbatt span{position:relative;width:26px;height:12px;border:2px solid #fff;border-radius:2px;box-sizing:border-box}
+.lowbatt span::after{content:"";position:absolute;right:-5px;top:2px;width:3px;height:4px;background:#fff}
+.lowbatt i{position:absolute;left:1px;top:1px;bottom:1px;width:40%;background:var(--warn)}
+.lowbatt.crit i{background:var(--crit)}
+.lowbatt.crit{animation:blink .5s infinite}
+.home-hint{left:max(10px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-50%);padding:6px 11px 6px 9px;border-radius:13px;color:#fff;font:600 12px/1 var(--f-data);display:flex;gap:6px;align-items:center}
+.home-hint::before{content:"";border:5px solid transparent;border-right:7px solid #fff;border-left:0}
+
+.center{inset:0;display:grid;place-items:center;padding:clamp(16px,4cqw,48px);text-align:center}
+.title{background:radial-gradient(ellipse at center,rgba(8,14,20,.5),rgba(8,14,20,0) 72%)}
+.title .k{font:600 clamp(11px,1.3cqw,14px)/1 var(--f-body);letter-spacing:.32em;padding-left:.32em;color:#eef3f6;opacity:.9}
+.title h2{margin:.4em 0 .3em;font:900 clamp(26px,5.6cqw,60px)/1.15 var(--f-display);color:#fff;letter-spacing:.04em;text-shadow:0 2px 18px rgba(0,0,0,.35);text-wrap:balance}
+.title p{margin:0;font:500 clamp(13px,1.9cqw,20px)/1.5 var(--f-body);color:#f1f5f8;text-shadow:0 1px 8px rgba(0,0,0,.45);text-wrap:balance}
+.card{background:rgba(7,11,15,.62)}
+.card .k{font:700 clamp(13px,1.8cqw,18px)/1 var(--f-display);letter-spacing:.42em;padding-left:.42em;color:#d3dce3}
+.card .rule{width:clamp(28px,5cqw,56px);height:2px;background:#fff;margin:clamp(10px,1.6cqw,18px) auto;opacity:.8}
+.card h2{margin:0;font:900 clamp(26px,5.4cqw,58px)/1.2 var(--f-display);color:#fff;letter-spacing:.06em;text-wrap:balance}
+.caption{left:0;right:0;bottom:0;padding:clamp(28px,6cqw,64px) clamp(14px,4cqw,48px) clamp(12px,2.2cqw,24px);background:linear-gradient(to top,rgba(5,9,13,.74),rgba(5,9,13,0));text-align:center}
+.caption span{display:inline-block;max-width:32em;font:500 clamp(15px,2.25cqw,25px)/1.5 var(--f-body);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);text-wrap:balance}
+.summary{background:rgba(7,11,15,.7)}
+.sum-in{width:min(100%,44em);display:flex;flex-direction:column;gap:clamp(4px,1cqw,10px);text-align:left}
+.sum-in h2{margin:0 0 4px;font:900 clamp(20px,3.4cqw,36px)/1.2 var(--f-display);color:#fff;text-align:center;letter-spacing:.1em;padding-left:.1em}
+.sum-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(8px,1.5cqw,16px);align-items:start;padding-top:clamp(8px,1.3cqw,14px);border-top:1px solid rgba(255,255,255,.14)}
+.tag{font:700 clamp(12px,1.5cqw,15px)/1 var(--f-body);padding:6px 0;border-radius:5px;color:#0c1218;width:4.6em;text-align:center}
+.tag-wind{background:var(--sky)}
+.tag-batt{background:var(--warn)}
+.tag-sig{background:var(--crit);color:#fff}
+.sum-row p{margin:0;font:400 clamp(12.5px,1.6cqw,17px)/1.55 var(--f-body);color:#e3eaef}
+.sum-row p b{color:#fff;font-weight:700}
+.end-mark{margin-top:clamp(6px,1.4cqw,14px);font:900 clamp(18px,2.6cqw,28px)/1 var(--f-display);color:#fff;text-align:center;letter-spacing:.5em;padding-left:.5em}
+.pause-badge{
+  left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  display:grid;place-items:center;background:rgba(9,15,21,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;
+}
+.pause-badge svg{width:24px;height:24px;fill:currentColor}
+.pause-badge.ended{left:auto;top:auto;right:max(14px,env(safe-area-inset-right,0px));bottom:14px;margin:0;width:48px;height:48px}
+.gl-error{inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--text);background:var(--panel);font-size:15px}
+
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.05)}}
+
+.player{display:flex;align-items:center;gap:12px}
+.ctl{
+  appearance:none;flex:none;width:40px;height:40px;border-radius:999px;display:grid;place-items:center;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);color:var(--white);
+}
+.ctl:hover{border-color:#3b4a59;background:#18222c}
+.ctl svg{width:18px;height:18px;fill:currentColor}
+.ctl.voice svg{width:20px;height:20px}
+.ctl.voice[aria-pressed="true"]{color:var(--sky);border-color:#2f4a60}
+.ctl.voice[aria-pressed="true"] .v-off,.ctl.voice[aria-pressed="false"] .v-on{display:none}
+.ctl.voice[aria-pressed="false"]{color:var(--muted)}
+.ctl:focus-visible,.track:focus-visible,.chap-btn:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+.time{flex:none;min-width:86px;font:500 12.5px/1 var(--f-data);color:var(--muted);font-variant-numeric:tabular-nums}
+.track{flex:1;min-width:0;display:flex;align-items:center;gap:3px;height:30px;cursor:pointer;touch-action:none;border-radius:4px}
+.seg{height:6px;background:#26313c;border-radius:3px;position:relative;overflow:hidden;transition:height .12s}
+.seg i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--white)}
+.track:hover .seg{height:8px}
+@media (max-width:560px){
+  .player{flex-wrap:wrap;gap:10px}
+  .track{order:-1;flex-basis:100%}
+  .time{margin-right:auto}
+}
+.chapters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.chap-btn{
+  appearance:none;min-width:0;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:3px;
+  border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:10px 12px;font-family:var(--f-body);
+}
+.chap-btn:hover{border-color:#3b4a59}
+.chap-btn small{font:500 11.5px/1.2 var(--f-data);color:var(--muted);font-variant-numeric:tabular-nums}
+.chap-btn span{font-weight:700;font-size:14px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chap-btn[aria-current="true"]{border-color:var(--white);background:#1b2530}
+@media (max-width:560px){.chapters{grid-template-columns:repeat(3,minmax(0,1fr))}.chap-btn{padding:8px 7px}.chap-btn span{font-size:13px}}
+@media (prefers-reduced-motion:reduce){.alert,.mode i,.rec i,.lowbatt.crit{animation:none}}
+.links{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px}
+.links a{color:var(--sky);text-decoration:none}
+.links a:hover{text-decoration:underline}
+.install{margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:13.5px}
+.install b{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <h1>山區飛行三狀況（立體版）</h1>
+    <p>白色無人機遇到強風、沒電、收不到訊號時會怎麼做｜有語音旁白｜約 2 分 30 秒</p>
+  </header>
+  <p class="install" id="install" hidden>變成手機上的 App：用 <b>Safari</b> 打開這一頁，按下方的「分享」，再選「<b>加入主畫面</b>」。之後從主畫面的「飛行教學」圖示打開就好。</p>
+
+  <div class="frame" id="frame" tabindex="0" role="button" aria-label="立體動畫畫面，按一下播放或暫停">
+    <div id="gl" aria-hidden="true"></div>
+    <div class="ov grade" id="grade"></div>
+
+    <div class="ov marker ring" id="ring" hidden>
+      <svg viewBox="0 0 96 96"><circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="4"/>
+        <circle id="ringArc" cx="48" cy="48" r="40" fill="none" stroke="#ff5a4f" stroke-width="5" stroke-linecap="round" transform="rotate(-90 48 48)" stroke-dasharray="251.3" stroke-dashoffset="0"/></svg>
+      <span class="n" id="ringN">4</span>
+    </div>
+    <div class="ov marker lowbatt" id="lowbatt" hidden><span><i id="lowbattFill"></i></span></div>
+    <div class="ov home-hint glass" id="homeHint" hidden>起飛點 <span id="homeDist">0.0</span> km</div>
+
+    <div class="ov hud" id="hud" style="opacity:0">
+      <div class="row">
+        <span class="chap glass" id="hudChap">開場</span>
+        <span class="mode" id="hudMode"><i></i><span id="hudModeText">待命</span></span>
+      </div>
+      <div class="row chips">
+        <span class="chip glass"><em>風速</em><b id="vWind">2.2</b><small>m/s</small></span>
+        <span class="chip glass" id="chipBatt"><em>電量</em><span class="batt"><span id="battFill"></span></span><b id="vBatt">100</b><small>%</small></span>
+        <span class="chip glass" id="chipSig"><em>訊號</em><span class="bars" id="bars"><i></i><i></i><i></i><i></i></span><b id="vSig" hidden>斷線</b></span>
+        <span class="chip glass hide-narrow"><em>高度</em><b id="vAlt">0</b><small>m</small></span>
+        <span class="chip glass rec" id="chipRec" hidden><i></i><b>REC</b></span>
+        <span class="chip glass ff" id="chipFF" hidden><b>快轉 ▸▸</b></span>
+      </div>
+      <div class="alert" id="alert" hidden></div>
+    </div>
+
+    <div class="ov center title" id="introTitle">
+      <div>
+        <div class="k">立體動畫</div>
+        <h2>白色無人機的山區飛行</h2>
+        <p>強風、沒電、收不到訊號時，飛機會怎麼做？</p>
+      </div>
+    </div>
+
+    <div class="ov center card" id="card" style="opacity:0">
+      <div>
+        <div class="k" id="cardK">狀況一</div>
+        <div class="rule"></div>
+        <h2 id="cardT">風很大的時候</h2>
+      </div>
+    </div>
+
+    <div class="ov caption" id="caption" style="opacity:0"><span id="captionText"></span></div>
+
+    <div class="ov center summary" id="summary" style="opacity:0">
+      <div class="sum-in">
+        <h2>重點整理</h2>
+        <div class="sum-row"><span class="tag tag-wind">強風</span><p>機身斜向迎風面頂住風，頂不住就會漂移、晃動、更耗電 → <b>降低高度避風，必要時提早返航</b></p></div>
+        <div class="sum-row"><span class="tag tag-batt">沒電</span><p>30% 跳出提醒，降到返航門檻就自動返航；電量真的用完，馬達停轉會直接掉下來 → <b>一定要提早返航</b></p></div>
+        <div class="sum-row"><span class="tag tag-sig">沒訊號</span><p>先原地懸停等訊號 → <b>等不到就爬升、自動返航</b>，越過山稜後訊號恢復</p></div>
+        <div class="end-mark" id="endMark" style="opacity:0">完</div>
+      </div>
+    </div>
+
+    <div class="ov fade" id="fade"></div>
+    <div class="ov pause-badge" id="pauseBadge" hidden>
+      <svg viewBox="0 0 24 24" id="badgeIco"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+  </div>
+
+  <div class="player">
+    <button class="ctl" id="btnPlay" type="button" aria-label="播放">
+      <svg viewBox="0 0 24 24"><path id="icoPlay" d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div class="time"><span id="tNow">0:00</span> / <span id="tTot">2:30</span></div>
+    <div class="track" id="track" role="slider" tabindex="0" aria-label="播放進度" aria-valuemin="0" aria-valuemax="150" aria-valuenow="0"></div>
+    <button class="ctl" id="btnReplay" type="button" aria-label="從頭播放">
+      <svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+    </button>
+    <button class="ctl voice" id="btnVoice" type="button" aria-pressed="true" aria-label="語音旁白" title="語音旁白（V）"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="v-on" d="M16.5 8.6a4.8 4.8 0 0 1 0 6.8M19.2 6a8.6 8.6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="v-off" d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="ctl" id="btnFs" type="button" aria-label="全螢幕">
+      <svg viewBox="0 0 24 24"><path d="M5 5h5v2H7v3H5zm9 0h5v5h-2V7h-3zM5 14h2v3h3v2H5zm12 0h2v5h-5v-2h3z"/></svg>
+    </button>
+  </div>
+
+  <nav class="chapters" id="chapters" aria-label="章節"></nav>
+  <nav class="links" aria-label="其他"><a href="../">玩遊戲「山谷空拍」</a><a href="../player/">聽音樂「空拍音樂」</a></nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+
+<script>
+/* ===== narration: time map between real time (what the viewer sees on the clock) and film time ===== */
+const NARR = {"knots": [[0.0, 0.0], [0.25, 0.25], [6.6473, 3.0], [10.9945, 6.6], [11.4445, 7.05], [13.9077, 8.8], [19.5179, 12.6], [25.1912, 16.4], [29.3779, 19.8], [36.7246, 25], [36.7746, 25.05], [39.3359, 26.8], [43.1298, 29.6], [47.2549, 32.6], [54.0128, 35.4], [59.0631, 39.8], [65.9407, 43], [65.9907, 43.05], [69.6502, 44.6], [75.33, 47], [80.3561, 48.901022284000845], [84.3758, 51], [84.4258, 51.05], [87.3442, 52.8], [90.9948, 54.6], [94.3281, 55.8], [100.3622, 60.9], [104.8687, 63], [110.0257, 66.6], [113.7992, 70], [114.1992, 70.4], [119.8499, 73.4], [120.0499, 73.6], [148.5659, 75.6], [150.9659, 78]], "total": 150.966, "src": "narration.mp3"};
+const RTOT = NARR.total;
+function warp(r) {
+  const K = NARR.knots;
+  if (r <= 0) return 0;
+  for (let i = 1; i < K.length; i++) if (r <= K[i][0]) { const a = K[i - 1], b = K[i]; return a[1] + (b[1] - a[1]) * (r - a[0]) / (b[0] - a[0]); }
+  return K[K.length - 1][1];
+}
+function unwarp(t) {
+  const K = NARR.knots;
+  if (t <= 0) return 0;
+  for (let i = 1; i < K.length; i++) if (t <= K[i][1] && K[i][1] > K[i - 1][1]) { const a = K[i - 1], b = K[i]; return a[0] + (b[0] - a[0]) * (t - a[1]) / (b[1] - a[1]); }
+  return K[K.length - 1][0];
+}
+</script>
+
+<script id="core">
+/* ===== Timeline and world model (pure, no DOM). Story coordinates: x along the flight, y measured DOWN from the sky
+   (GROUND = 640 is the takeoff plain), z = 0 is the flight line. 3D height = GROUND - y. 1 unit = 1 m. ===== */
+const TOTAL = 78, GROUND = 640, HOME_X = 330, PILOT_X = 285, PILOT_Z = 22, PAD_Y = 638.3;
+const CTRL = { x: PILOT_X + 1.2, y: 637 };
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const clamp01 = v => clamp(v, 0, 1);
+const smooth = (a, b, v) => { const k = clamp01((v - a) / (b - a)); return k * k * (3 - 2 * k); };
+const gauss = (x, c, w) => Math.exp(-(((x - c) / w) ** 2));
+
+function heightAt(x, z) {
+  const rA = 212 * gauss(x, 1350, 280) * (0.72 + 0.28 * Math.cos(z / 650));
+  const s1 = 80 * gauss(x, 1060, 150) * (0.6 + 0.4 * Math.exp(-((z / 800) ** 2)));
+  const rB = 460 * gauss(x, 2450, 300) * (0.5 + 0.5 * Math.exp(-((z / 650) ** 2)));
+  const s2 = 150 * gauss(x, 2110, 140) * (0.7 + 0.3 * Math.cos(z / 500));
+  const fh = 230 * gauss(x, 3330, 260);
+  const s = smooth(680, 980, x);
+  const n = 17 + 9 * Math.sin(x * 0.021 + z * 0.011) + 5 * Math.sin(x * 0.053 + 1.3 - z * 0.017)
+          + 3 * Math.sin(x * 0.113 + 0.4 + z * 0.041) + 7 * Math.sin(z * 0.009) * Math.sin(x * 0.013 + 0.7);
+  const zz = -z; // high ranges behind the flight line (z < 0), lower foothills on the camera side (z > 0)
+  const back = (300 * smooth(350, 1350, zz) + 420 * smooth(1800, 3600, zz)) * (0.62 + 0.38 * Math.sin(x * 0.0037 + 1.1) * Math.cos(zz * 0.0021));
+  const front = (110 * smooth(450, 1400, -zz) + 320 * smooth(1700, 3200, -zz)) * (0.6 + 0.4 * Math.sin(x * 0.0051 + 2.3));
+  const ends = 380 * smooth(3950, 5600, x) + 360 * smooth(-250, -1900, x);
+  const rough = (back + front + ends) > 1 ? (back + front + ends) * 0.08 * Math.sin(x * 0.017 + z * 0.023) * Math.cos(z * 0.013 - x * 0.007) : 0;
+  return rA + s1 + rB + s2 + fh + s * n + back + front + ends + rough;
+}
+function terrainY(x) { return GROUND - heightAt(x, 0); }
+
+function makeLake(xa, xb, rise) {
+  let maxY = -1, mx = xa;
+  for (let x = xa; x <= xb; x += 2) { const y = terrainY(x); if (y > maxY) { maxY = y; mx = x; } }
+  const level = maxY - rise;
+  let l = mx, r = mx;
+  while (terrainY(l - 2) > level && l > xa - 200) l -= 2;
+  while (terrainY(r + 2) > level && r < xb + 200) r += 2;
+  return { x0: l, x1: r, level };
+}
+const LAKES = [makeLake(1780, 2000, 15), makeLake(2760, 3040, 19)];
+const SIG_BACK = 55.0; // moment the climbing drone regains line of sight (checked against linkAt)
+
+const CHAPTERS = [
+  { key: 'intro', label: '開場', short: '開場', t0: 0, t1: 7 },
+  { key: 'wind', label: '狀況一・強風', kicker: '狀況一', name: '風很大的時候', short: '強風', t0: 7, t1: 25 },
+  { key: 'batt', label: '狀況二・沒電', kicker: '狀況二', name: '快要沒電的時候', short: '沒電', t0: 25, t1: 43 },
+  { key: 'fall', label: '狀況二・電量用完', kicker: '狀況二・補充', name: '電量真的用完的時候', short: '掉落', t0: 43, t1: 51 },
+  { key: 'sig', label: '狀況三・沒訊號', kicker: '狀況三', name: '收不到訊號的時候', short: '沒訊號', t0: 51, t1: 70 },
+  { key: 'end', label: '結尾', short: '結尾', t0: 70, t1: 78 },
+];
+
+const DATA = {
+  intro: {
+    path: [{ t: 0, x: HOME_X, y: PAD_Y, stop: 1 }, { t: 1.9, x: HOME_X, y: PAD_Y, stop: 1 }, { t: 3.5, x: 350, y: 470 },
+           { t: 5.0, x: 640, y: 360 }, { t: 7.0, x: 1000, y: 300 }],
+    face: [[0, 1]], spin: [[0, 0], [0.6, 0], [1.7, 1]], batt: [[0, 100], [7, 98]], wind: [[0, 2.2], [7, 3]],
+    mode: [[0, '待命', 'ok'], [1.9, '起飛', 'ok'], [3.6, '前往山區', 'ok']],
+  },
+  wind: {
+    path: [{ t: 7, x: 1240, y: 290 }, { t: 9.5, x: 1330, y: 285, stop: 1 }, { t: 11.5, x: 1333, y: 285 },
+           { t: 14.5, x: 1372, y: 288 }, { t: 17, x: 1430, y: 292 }, { t: 19.7, x: 1458, y: 292 },
+           { t: 21.8, x: 1555, y: 410 }, { t: 23.2, x: 1580, y: 418, stop: 1 }, { t: 25, x: 1580, y: 418, stop: 1 }],
+    face: [[7, 1]], spin: [[7, 1]], batt: [[7, 76], [11, 74.6], [19, 66], [25, 63.5]],
+    wind: [[7, 3], [9, 3.5], [11.5, 9.6], [14, 13], [16.5, 14.2], [19, 13.5], [25, 12.8]],
+    mode: [[7, '定點懸停', 'ok'], [11.6, '強風警告', 'warn'], [19.8, '降低高度避風', 'warn'], [22.6, '穩定懸停', 'ok']],
+  },
+  batt: {
+    path: [{ t: 25, x: 1770, y: 255 }, { t: 28, x: 1815, y: 250, stop: 1 }, { t: 32.6, x: 1822, y: 250, stop: 1 },
+           { t: 34.4, x: 1810, y: 140, stop: 1 }, { t: 40, x: HOME_X, y: 140, stop: 1 },
+           { t: 42.4, x: HOME_X, y: PAD_Y, stop: 1 }, { t: 43, x: HOME_X, y: PAD_Y, stop: 1 }],
+    face: [[25, 1], [33.8, 1], [34.6, -1]], spin: [[25, 1], [42.5, 1], [43, 0]],
+    batt: [[25, 36], [29.6, 30], [32.6, 20], [40, 13.5], [42.4, 12]], wind: [[25, 2.6]],
+    mode: [[25, '錄影中', 'ok'], [29.6, '低電量提醒', 'warn'], [32.6, '自動返航', 'crit'], [34.4, '返航中', 'warn'],
+           [40, '降落中', 'warn'], [42.4, '已降落', 'ok']],
+  },
+  fall: {
+    path: [{ t: 43, x: 1790, y: 255 }, { t: 45.5, x: 1815, y: 250, stop: 1 }, { t: 47, x: 1815, y: 250, stop: 1 }],
+    face: [[43, 1]], spin: [[43, 1], [46.2, 1], [46.45, 0.5], [46.7, 0.9], [47.1, 0]], batt: [[43, 8], [47, 0]], wind: [[43, 2.6]],
+    mode: [[43, '電量嚴重不足', 'crit'], [47, '沒電・馬達停轉', 'crit'], [48.9, '墜毀', 'crit']],
+  },
+  sig: {
+    path: [{ t: 43, x: 2110, y: 100 }, { t: 45.2, x: 2460, y: 88 }, { t: 47.4, x: 2700, y: 290 },
+           { t: 48.9, x: 2880, y: 415, stop: 1 }, { t: 52.9, x: 2880, y: 415, stop: 1 },
+           { t: 55.9, x: 2880, y: 25, stop: 1 }, { t: 62, x: 2000, y: 25 }],
+    face: [[43, 1], [55.9, 1], [56.7, -1]], spin: [[43, 1]], batt: [[43, 61], [62, 52]], wind: [[43, 3.4]],
+    mode: [[43, '飛往拍攝點', 'ok'], [46.6, '訊號微弱', 'warn'], [47.8, '失聯・懸停等待', 'crit'],
+           [52.9, '失聯・自動返航', 'crit'], [SIG_BACK, '訊號恢復・返航中', 'ok']],
+  },
+  end: {
+    path: [{ t: 62, x: HOME_X, y: 330 }, { t: 65.2, x: HOME_X, y: PAD_Y, stop: 1 }, { t: 70, x: HOME_X, y: PAD_Y, stop: 1 }],
+    face: [[62, -1]], spin: [[62, 1], [65.4, 1], [66.4, 0]], batt: [[62, 47], [65.2, 45]], wind: [[62, 1.8]],
+    mode: [[62, '降落中', 'warn'], [65.2, '已降落', 'ok']],
+  },
+};
+
+const CAPTIONS = [
+  [3.0, 6.6, '無人機從平地的起飛點出發，往深山裡飛。'],
+  [8.8, 12.6, '風一變大，無人機會把機身斜向迎風那一側，用推力頂住風。'],
+  [12.6, 16.4, '風大過它頂得住的程度，就會被吹離原本的位置，一直晃。'],
+  [16.4, 19.8, '為了跟風對抗，電量也掉得比平常快很多。'],
+  [19.8, 25, '收到強風警告：降低高度、躲到山稜背風面；風一直不停，就該提早返航。'],
+  [26.8, 29.6, '在山谷上空錄影，電量一路往下掉。'],
+  [29.6, 32.6, '降到 30%，先跳出低電量提醒。'],
+  [32.6, 35.4, '掉到返航門檻（這裡示意為 20%），飛機自己中止任務，自動返航。'],
+  [35.4, 39.8, '先爬升到安全高度、越過山稜，再直線飛回起飛點。'],
+  [39.8, 43, '在起飛點正上方垂直降落。電量要是低到撐不回去，就會就地降落。'],
+  [44.8, 46.6, '越過大山，下降到後面的山谷拍溪流。'],
+  [46.6, 47.8, '山擋在中間，訊號越來越弱⋯⋯'],
+  [47.8, 52.9, '訊號完全斷了！飛機先原地懸停，等幾秒看訊號會不會回來。'],
+  [52.9, SIG_BACK, '等不到訊號，飛機自動返航：先往上爬升。'],
+  [SIG_BACK, 58.6, '爬過山稜，跟遙控器之間沒有東西擋住，訊號就恢復了。'],
+  [58.6, 62, '接著沿返航路線，自己飛回起飛點。'],
+  [62.4, 65.4, '三種狀況處理方式不同，目標都一樣：平安回到起飛點。'],
+];
+const ALERTS = [
+  [11.6, 13.6, '強風警告：風速超過 9 m/s', 'warn'],
+  [29.6, 31.4, '低電量：剩 30%', 'warn'],
+  [32.6, 34.4, '電量 20%：自動返航', 'crit'],
+  [47.8, 49.6, '訊號中斷', 'crit'],
+  [52.9, 54.5, '等不到訊號：自動返航', 'crit'],
+  [SIG_BACK, SIG_BACK + 1.6, '訊號恢復', 'ok'],
+];
+const REC = [[25, 32.6], [48.0, 52.9]];
+const FF = [[34.6, 40.2]];
+const RTH = [[32.6, 42.4, 140], [52.9, 62, 25]];
+const LOWB = [[29.6, 42.4]];
+const CD = [48.9, 52.9];
+const CUTS = [7, 25, 43, 51, 70];
+
+/* The out-of-battery fall (43–51 s) sits right after the low-battery chapter, so everything that used to start at 43 s runs 8 s later. */
+const INSERT_AT = 43, INSERT_LEN = 8;
+(function () {
+  const f = v => (v >= INSERT_AT ? v + INSERT_LEN : v);
+  for (const k of ['sig', 'end']) {
+    const D = DATA[k];
+    D.path.forEach(p => { p.t = f(p.t); });
+    for (const key of ['face', 'spin', 'batt', 'wind', 'mode', 'lead']) if (D[key]) D[key].forEach(r => { r[0] = f(r[0]); });
+  }
+  for (const list of [CAPTIONS, ALERTS, REC, FF, RTH, LOWB]) list.forEach(w => { if (w[0] >= INSERT_AT) { w[0] = f(w[0]); w[1] = f(w[1]); } });
+  CD[0] = f(CD[0]); CD[1] = f(CD[1]);
+})();
+
+/* The fall: motors stop at FALL_T0 and the drone drops into the valley lake (fall rate exaggerated so it fits on screen). */
+const FALL_T0 = 47, FALL_X = 1815, FALL_Y = 250, FALL_G = 187, FALL_VX = 22;
+const T_IMPACT = FALL_T0 + Math.sqrt(2 * (LAKES[0].level - FALL_Y) / FALL_G);
+CAPTIONS.push(
+  [44.6, 47.0, '要是不理提醒、也來不及返航，電量會一路掉到 0%。'],
+  [47.0, T_IMPACT, '沒電的瞬間馬達停轉，飛機直接從半空中掉下來。'],
+  [T_IMPACT, 51, '所以電量一到返航門檻，就一定要回家。']);
+ALERTS.push([45.6, 47.0, '電量即將耗盡', 'crit'], [47.0, T_IMPACT, '電量 0%：馬達停轉', 'crit'], [T_IMPACT, T_IMPACT + 1.7, '飛機墜入湖中', 'crit']);
+LOWB.push([43, 47.0]);
+
+function chapterAt(t) { for (let i = CHAPTERS.length - 1; i >= 0; i--) if (t >= CHAPTERS[i].t0) return i; return 0; }
+function keysLerp(keys, t, ease) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const a = keys[i], b = keys[i + 1];
+    if (t <= b[0]) { let k = (t - a[0]) / (b[0] - a[0]); if (ease) k = k * k * (3 - 2 * k); return a[1] + (b[1] - a[1]) * k; }
+  }
+  return keys[keys.length - 1][1];
+}
+function keyStep(keys, t) { let v = keys[0]; for (const k of keys) if (t >= k[0]) v = k; return v; }
+function inWin(list, t) { for (const w of list) if (t >= w[0] && t < w[1]) return w; return null; }
+
+function pathAt(keys, t) {
+  const n = keys.length;
+  if (t <= keys[0].t) return { x: keys[0].x, y: keys[0].y };
+  if (t >= keys[n - 1].t) return { x: keys[n - 1].x, y: keys[n - 1].y };
+  let i = 0; while (i < n - 2 && t > keys[i + 1].t) i++;
+  const a = keys[i], b = keys[i + 1], dt = b.t - a.t, k = (t - a.t) / dt;
+  const tan = j => {
+    const p = keys[j];
+    if (p.stop || j === 0 || j === n - 1) return { x: 0, y: 0 };
+    const L = keys[j - 1], R = keys[j + 1], d = R.t - L.t;
+    return { x: (R.x - L.x) / d, y: (R.y - L.y) / d };
+  };
+  const ma = tan(i), mb = tan(i + 1);
+  const k2 = k * k, k3 = k2 * k;
+  const h00 = 2 * k3 - 3 * k2 + 1, h10 = k3 - 2 * k2 + k, h01 = -2 * k3 + 3 * k2, h11 = k3 - k2;
+  return {
+    x: h00 * a.x + h10 * dt * ma.x + h01 * b.x + h11 * dt * mb.x,
+    y: h00 * a.y + h10 * dt * ma.y + h01 * b.y + h11 * dt * mb.y,
+  };
+}
+
+/* Radio link: straight line from the pilot's controller to the drone. Terrain poking above that line weakens or cuts it. */
+function linkAt(x, y) {
+  const dx = x - CTRL.x, dy = y - CTRL.y, dist = Math.hypot(dx, dy);
+  let pen = 0, near = null;
+  const N = 96;
+  for (let i = 1; i < N; i++) {
+    const k = i / N, lx = CTRL.x + dx * k, ly = CTRL.y + dy * k, p = ly - terrainY(lx);
+    if (p > pen) pen = p;
+    if (p > 0) near = { x: lx, y: ly };
+  }
+  const q = clamp01(1 - dist / 9000) * (1 - smooth(6, 230, pen));
+  return { q, pen, near, dist };
+}
+
+function stateAt(tIn) {
+  const t = clamp(tIn, 0, TOTAL);
+  const ci = chapterAt(t), C = CHAPTERS[ci], D = DATA[C.key];
+  const p = pathAt(D.path, t);
+  const ta = Math.max(C.t0, t - 0.06), tb = Math.min(C.t1, t + 0.06);
+  const pa = pathAt(D.path, ta), pb = pathAt(D.path, tb);
+  const vx = (pb.x - pa.x) / Math.max(0.001, tb - ta);
+
+  const ambient = Math.max(0, keysLerp(D.wind, t, true) + 0.35 * Math.sin(t * 1.7) + 0.25 * Math.sin(t * 3.3 + 1));
+  const shelter = C.key === 'wind' ? 1 - 0.62 * smooth(19.8, 22.2, t) : 1;
+  const wind = ambient * shelter;
+  const air = clamp01((PAD_Y - p.y) / 26);
+  const A = C.key === 'wind' ? clamp01((wind - 6.5) / 7) : 0;
+  let x = p.x + A * (6 * Math.sin(t * 11.3) + 3.5 * Math.sin(t * 17.9 + 1));
+  let y = p.y + A * (4 * Math.sin(t * 9.7 + 2) + 2.5 * Math.sin(t * 23.1)) + 2.2 * Math.sin(t * 2.1) * air;
+  const z = A * 5 * Math.sin(t * 7.3 + 0.5);
+  let angle = (clamp(vx * 0.0011, -0.36, 0.36) - (wind / 14) * 0.42 + A * 0.07 * Math.sin(t * 13.7)) * air;
+  let roll = A * 0.09 * Math.sin(t * 8.1 + 1.2) * air;
+  let splash = null, hide = false;
+  if (C.key === 'fall') {
+    const w = smooth(45.6, 46.9, t) * (t < FALL_T0 ? 1 : 0); // power sputters before the motors stop
+    x += w * 4 * Math.sin(t * 13.1); y += w * 3 * Math.sin(t * 11.7); angle += w * 0.14 * Math.sin(t * 9.3); roll += w * 0.1 * Math.sin(t * 7.7);
+    if (t >= FALL_T0) {
+      const d = Math.min(t, T_IMPACT) - FALL_T0;
+      x = FALL_X + FALL_VX * d; y = FALL_Y + 0.5 * FALL_G * d * d;
+      angle = -0.2 - d * 4.4; roll = d * 2.7;
+      if (t >= T_IMPACT) {
+        const a = t - T_IMPACT;
+        y = LAKES[0].level + Math.min(14, a * 9);
+        splash = { age: a, x: FALL_X + FALL_VX * (T_IMPACT - FALL_T0), h: GROUND - LAKES[0].level };
+        hide = a > 1.3;
+      }
+    }
+  }
+  const face = keysLerp(D.face, t, true);
+  const spin = keysLerp(D.spin, t, true);
+  const batt = keysLerp(D.batt, t, false);
+  const mode = keyStep(D.mode, t);
+
+  const link = linkAt(x, y);
+  const qAt = tt => { const pp = pathAt(D.path, Math.max(C.t0, tt)); return linkAt(pp.x, pp.y).q; };
+  const q = (link.q + qAt(t - 0.25) + qAt(t - 0.5)) / 3;
+  const bars = q >= 0.62 ? 4 : q >= 0.45 ? 3 : q >= 0.28 ? 2 : q >= 0.1 ? 1 : 0;
+
+  const cap = inWin(CAPTIONS, t);
+  const capA = cap ? smooth(cap[0], cap[0] + 0.25, t) * (1 - smooth(cap[1] - 0.25, cap[1], t)) : 0;
+  const cardA = C.kicker ? smooth(C.t0, C.t0 + 0.3, t) * (1 - smooth(C.t0 + 1.55, C.t0 + 1.95, t)) : 0;
+  let fade = 0; for (const b of CUTS) fade = Math.max(fade, 1 - Math.abs(t - b) / 0.45);
+  const hudA = C.key === 'intro' ? smooth(2.4, 3.0, t) : C.key === 'end' ? 1 - smooth(73.4, 73.9, t) : 1;
+  const rth = inWin(RTH, t);
+  const cd = t >= CD[0] && t < CD[1] ? { frac: (CD[1] - t) / (CD[1] - CD[0]), n: Math.ceil(CD[1] - t) } : null;
+
+  return {
+    t, ci, key: C.key, chapLabel: C.label, card: C, x, y, z, angle, roll, face, spin, batt, wind, ambient, air,
+    mode, sev: mode[2], q, bars, link,
+    cap: cap ? cap[2] : '', capA, alert: inWin(ALERTS, t), cardA,
+    titleA: 1 - smooth(2.3, 2.9, t), sumA: smooth(73.6, 74.2, t), endA: smooth(75.6, 76.2, t), hudA, splash, hide,
+    fade: clamp01(fade), rec: !!inWin(REC, t), ff: !!inWin(FF, t), rthY: rth ? rth[2] : null,
+    lowb: !!inWin(LOWB, t), cd, alt: Math.max(0, PAD_Y - y),
+  };
+}
+</script>
+
+<script>
+/* ===== 3D scene and player ===== */
+(function () {
+  const $ = id => document.getElementById(id);
+  const frame = $('frame'), host = $('gl');
+  const small = Math.min(window.innerWidth, window.innerHeight) < 700;
+
+  let renderer = null;
+  try {
+    if (!window.THREE) throw new Error('three missing');
+    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  } catch (e) {
+    const box = document.createElement('div'); box.className = 'ov gl-error';
+    box.textContent = '這台裝置目前無法顯示立體畫面，請換用電腦或較新的手機瀏覽器開啟。';
+    frame.appendChild(box);
+  }
+  if (!renderer) return;
+
+  const V3 = THREE.Vector3;
+  const up3 = (x, y2d, z) => new V3(x, GROUND - y2d, z || 0);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.5 : 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 1.5, 16000);
+  scene.fog = new THREE.Fog(0xc9d8e2, 1500, 8200);
+
+  /* --- palettes per chapter --- */
+  const PAL = {
+    intro: { top: 0x84acd6, bot: 0xe9eff4, fog: 0xd6dee5, sun: 0xfff8ec, sunI: 1.0, hemiS: 0xe0e9f1, hemiG: 0x6c6e68, hemiI: 0.72, dir: [-0.45, 0.78, 0.42], grade: '' },
+    wind: { top: 0x7a8ea2, bot: 0xd3d8dd, fog: 0xc4cbd1, sun: 0xeef1f4, sunI: 0.5, hemiS: 0xd7dde3, hemiG: 0x62666b, hemiI: 0.86, dir: [-0.45, 0.8, 0.4], grade: 'rgba(30,48,66,0.08)' },
+    batt: { top: 0x7ea3cf, bot: 0xf1e4d2, fog: 0xe1d8cb, sun: 0xffeacc, sunI: 1.0, hemiS: 0xece4d8, hemiG: 0x6b675c, hemiI: 0.7, dir: [-0.6, 0.6, 0.5], grade: 'rgba(255,160,80,0.04)' },
+    sig: { top: 0x78a5d6, bot: 0xe4edf3, fog: 0xd1dce5, sun: 0xfff8ee, sunI: 1.0, hemiS: 0xdde8f1, hemiG: 0x686c67, hemiI: 0.72, dir: [-0.4, 0.8, 0.45], grade: '' },
+    end: { top: 0x7a8fbb, bot: 0xf3d9b6, fog: 0xe6d2b9, sun: 0xffd9a8, sunI: 1.05, hemiS: 0xf1e2ce, hemiG: 0x676150, hemiI: 0.7, dir: [-0.75, 0.38, 0.5], grade: 'rgba(255,140,60,0.07)' },
+  };
+  PAL.fall = PAL.batt;
+
+  /* --- sky dome --- */
+  const skyU = { top: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new V3(0, 1, 0) }, sunCol: { value: new THREE.Color() } };
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(12000, 32, 16), new THREE.ShaderMaterial({
+    uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
+    vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform vec3 top; uniform vec3 bot; uniform vec3 sunDir; uniform vec3 sunCol; varying vec3 vDir;' +
+      'void main(){ float h = clamp(vDir.y * 1.7 + 0.06, 0.0, 1.0); vec3 c = mix(bot, top, pow(h, 0.75));' +
+      'float s = max(dot(normalize(vDir), normalize(sunDir)), 0.0); c += sunCol * (pow(s, 900.0) * 1.4 + pow(s, 14.0) * 0.22);' +
+      'gl_FragColor = vec4(c, 1.0); }',
+  }));
+  sky.renderOrder = -10; scene.add(sky);
+
+  /* --- lights --- */
+  const hemi = new THREE.HemisphereLight(0xd2e4f4, 0x4c5c3c, 0.62); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xfff3dc, 1.0);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
+  Object.assign(sun.shadow.camera, { left: -230, right: 230, top: 230, bottom: -230, near: 10, far: 4500 });
+  sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.8;
+  scene.add(sun); scene.add(sun.target);
+
+  /* --- terrain --- */
+  const LAKE3 = LAKES.map(l => ({ x0: l.x0, x1: l.x1, h: GROUND - l.level }));
+  const C_ = hex => new THREE.Color(hex);
+  const COL = { plain: C_(0xa7ab95), low: C_(0xa3a597), moss: C_(0x9aa070), mid: C_(0xaeb2b5), high: C_(0xbcc0c4), rock: C_(0x80858b),
+               snow: C_(0xf4f6f8), scar: C_(0xc2b49c), sand: C_(0xc4bb9c) };
+  const tmpC = new THREE.Color();
+  function hash(x, z) { const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return s - Math.floor(s); }
+  function colorAt(x, z, h, slope, out) {
+    out.copy(COL.low).lerp(COL.mid, smooth(40, 220, h));
+    if (x < 700 && h < 6) out.copy(COL.plain);
+    out.lerp(COL.moss, (1 - smooth(60, 220, h)) * (1 - smooth(0.18, 0.45, slope)) * 0.45);
+    out.lerp(COL.high, smooth(220, 330, h));
+    out.lerp(COL.rock, smooth(0.32, 0.75, slope) * 0.85);
+    out.lerp(COL.snow, smooth(320, 450, h) * (1 - smooth(0.5, 0.9, slope)));
+    if (x > 2590 && x < 2740 && Math.abs(z) < 170) {
+      const k = Math.sin(Math.PI * (x - 2590) / 150) * (1 - Math.abs(z) / 170);
+      out.lerp(COL.scar, clamp01(k * 1.6));
+    }
+    for (const l of LAKE3) if (x > l.x0 - 140 && x < l.x1 + 140 && h > l.h - 1 && h < l.h + 4) out.lerp(COL.sand, 0.75);
+    out.multiplyScalar(0.88 + 0.16 * hash(Math.floor(x / 9), Math.floor(z / 9)));
+    return out;
+  }
+  /* tileable grey rock texture: layered value noise plus horizontal strata and dark cracks */
+  const rockCanvas = (function () {
+    const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d'), img = g.createImageData(N, N), d = img.data;
+    const h2 = (ix, iy, sd) => { const v = Math.sin(ix * 127.1 + iy * 311.7 + sd * 74.7) * 43758.5453; return v - Math.floor(v); };
+    const vn = (x, y, px, py, sd) => {
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const L = (i, j) => h2(((i % px) + px) % px, ((j % py) + py) % py, sd);
+      const A = L(x0, y0), B = L(x0 + 1, y0), C = L(x0, y0 + 1), D = L(x0 + 1, y0 + 1);
+      return A + (B - A) * sx + (C - A) * sy + (A - B - C + D) * sx * sy;
+    };
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const u = x / N, v = y / N;
+      let f = 0, amp = 0.5;
+      for (let o = 0, fr = 4; o < 5; o++, fr *= 2, amp *= 0.5) f += amp * vn(u * fr, v * fr, fr, fr, o);
+      const strata = vn(u * 4, v * 24, 4, 24, 9);
+      const blotch = vn(u * 8, v * 8, 8, 8, 13);
+      const grain = h2(x, y, 21);
+      let val = 0.8 + 0.38 * (f - 0.5) + 0.1 * (strata - 0.5) - 0.12 * smooth(0.62, 0.8, blotch) + 0.07 * (grain - 0.5);
+      val = Math.max(0.45, Math.min(1, val));
+      const i = (y * N + x) * 4, tint = (strata - 0.5) * 6;
+      d[i] = val * 255 + tint; d[i + 1] = val * 255 + tint * 0.6; d[i + 2] = val * 255 - tint * 0.4; d[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return c;
+  })();
+  const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+  function rockTex(rx, rz) {
+    const t = new THREE.CanvasTexture(rockCanvas);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, rz); t.anisotropy = Math.min(8, maxAniso);
+    return t;
+  }
+  function buildTerrain(x0, x1, z0, z1, step, drop, tile) {
+    const nx = Math.round((x1 - x0) / step), nz = Math.round((z1 - z0) / step);
+    const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0, nx, nz);
+    g.rotateX(-Math.PI / 2);
+    const pos = g.attributes.position, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i) + cx, z = pos.getZ(i) + cz;
+      pos.setXYZ(i, x, heightAt(x, z) - drop, z);
+    }
+    g.computeVertexNormals();
+    const nor = g.attributes.normal, cols = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      colorAt(pos.getX(i), pos.getZ(i), pos.getY(i) + drop, 1 - nor.getY(i), tmpC);
+      cols[i * 3] = tmpC.r; cols[i * 3 + 1] = tmpC.g; cols[i * 3 + 2] = tmpC.b;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, map: rockTex((x1 - x0) / tile, (z1 - z0) / tile) }));
+    m.receiveShadow = true;
+    return m;
+  }
+  scene.add(buildTerrain(-3200, 6800, -6000, 4600, 90, 4, 180));
+  scene.add(buildTerrain(-450, 3950, -1550, 1350, small ? 20 : 15, 0, 75));
+
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x5f8ea8, roughness: 0.18, metalness: 0.15, transparent: true, opacity: 0.92 });
+  for (const l of LAKE3) {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(l.x1 - l.x0 + 520, 1400), waterMat);
+    w.rotation.x = -Math.PI / 2; w.position.set((l.x0 + l.x1) / 2, l.h, 0); w.receiveShadow = true; scene.add(w);
+  }
+
+  /* --- trees (instanced: trunk + two cone tiers, all in unit-tree space) --- */
+  const R = (function (a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })(11);
+  const trees = [];
+  const maxTrees = small ? 1500 : 2400;
+  for (let i = 0; i < 26000 && trees.length < maxTrees; i++) {
+    const x = -300 + R() * 4200, z = -1450 + R() * 2700;
+    const h = heightAt(x, z);
+    const sl = Math.abs(heightAt(x + 6, z) - heightAt(x - 6, z)) / 12 + Math.abs(heightAt(x, z + 6) - heightAt(x, z - 6)) / 12;
+    if (h > 330 || sl > 0.8) continue;
+    if (x > 140 && x < 520 && Math.abs(z) < 110) continue;
+    if (x < 700 && h < 6 && R() < 0.82) continue;
+    if (x > 2585 && x < 2745 && Math.abs(z) < 180) continue;
+    if (LAKE3.some(l => x > l.x0 - 160 && x < l.x1 + 160 && h < l.h + 3)) continue;
+    if (Math.sin(x * 0.0042 + 0.7) * Math.cos(z * 0.0047 + 1.3) + 0.5 * Math.sin(x * 0.011 + z * 0.009) < 0.2) continue; // trees grow in stands
+    const H = 12 + R() * 10;
+    trees.push({ x, z, y: h - 0.6, H, yaw: R() * 6.28, ph: R() * 6.28, c: R() });
+  }
+  const trunkG = new THREE.CylinderGeometry(0.025, 0.04, 0.2, 5); trunkG.translate(0, 0.1, 0);
+  const tier1 = new THREE.ConeGeometry(0.2, 0.46, 8); tier1.translate(0, 0.1 + 0.23, 0);
+  const tier2 = new THREE.ConeGeometry(0.16, 0.42, 8); tier2.translate(0, 0.36 + 0.21, 0);
+  const tier3 = new THREE.ConeGeometry(0.11, 0.38, 8); tier3.translate(0, 0.62 + 0.19, 0);
+  const foliageMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const treeMeshes = [
+    new THREE.InstancedMesh(trunkG, new THREE.MeshLambertMaterial({ color: 0x5a4632 }), trees.length),
+    new THREE.InstancedMesh(tier1, foliageMat, trees.length),
+    new THREE.InstancedMesh(tier2, foliageMat, trees.length),
+    new THREE.InstancedMesh(tier3, foliageMat, trees.length),
+  ];
+  const dummy = new THREE.Object3D(); dummy.rotation.order = 'ZYX';
+  const greenA = new THREE.Color(0x5f7d22), greenB = new THREE.Color(0x9cb540);
+  function placeTree(i, sway) {
+    const tr = trees[i];
+    dummy.position.set(tr.x, tr.y, tr.z);
+    dummy.rotation.set(0, tr.yaw, -sway);
+    dummy.scale.set(tr.H * 0.95, tr.H, tr.H * 0.95);
+    dummy.updateMatrix();
+    for (const m of treeMeshes) m.setMatrixAt(i, dummy.matrix);
+  }
+  trees.forEach((tr, i) => { placeTree(i, 0); for (let k = 1; k < 4; k++) treeMeshes[k].setColorAt(i, tmpC.copy(greenA).lerp(greenB, clamp01(tr.c * 0.8 + k * 0.08))); });
+  for (const m of treeMeshes) { m.castShadow = true; m.receiveShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); }
+  let lastSwayKey = null;
+
+  /* --- clouds --- */
+  const clouds = [];
+  const puffG = new THREE.SphereGeometry(1, 18, 12);
+  const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xb4bcc4, transparent: true, opacity: 0.9, depthWrite: false });
+  for (let i = 0; i < 9; i++) {
+    const g = new THREE.Group(), n = 5 + Math.floor(R() * 4), s = 30 + R() * 40;
+    for (let j = 0; j < n; j++) {
+      const p = new THREE.Mesh(puffG, cloudMat);
+      const r = s * (0.6 + R() * 0.6);
+      p.position.set((j - n / 2) * s * 0.75 + (R() - 0.5) * s * 0.4, (R() - 0.3) * s * 0.35, (R() - 0.5) * s * 0.8);
+      p.scale.set(r * 1.35, r * 0.6, r);
+      g.add(p);
+    }
+    clouds.push({ g, u: R() * 6000, y: 760 + R() * 360, z: -2700 + R() * 3600 });
+    scene.add(g);
+  }
+
+  /* --- splash when the drone hits the lake --- */
+  const DROPS = [];
+  for (let i = 0; i < 70; i++) { const a = R() * 6.28, sp = 6 + R() * 22; DROPS.push({ vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 18 + R() * 42, r: 0.7 + R() * 1.5 }); }
+  const drops = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xf4f8fb, transparent: true, opacity: 0.9, depthWrite: false }), DROPS.length);
+  drops.frustumCulled = false; drops.visible = false; scene.add(drops);
+  const ripples = [0, 0.35].map(delay => {
+    const r = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+    r.rotation.x = -Math.PI / 2; r.visible = false; r.userData.delay = delay; scene.add(r); return r;
+  });
+  const sM = new THREE.Matrix4(), sQ = new THREE.Quaternion(), sS = new V3(), sP = new V3();
+
+  /* --- home pad, pilot --- */
+  const std = (c, r = 0.6, m = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
+  function mesh(geo, mat, x, y, z, parent) { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; (parent || scene).add(o); return o; }
+  mesh(new THREE.CylinderGeometry(11, 11.5, 0.4, 40), std(0xcfd5da, 0.8), HOME_X, 0.2, 0);
+  mesh(new THREE.CylinderGeometry(9, 9, 0.42, 40), std(0x37434e, 0.8), HOME_X, 0.22, 0);
+  const hMat = std(0xf3f6f8, 0.6);
+  mesh(new THREE.BoxGeometry(1.1, 0.05, 6.5), hMat, HOME_X - 2.2, 0.45, 0);
+  mesh(new THREE.BoxGeometry(1.1, 0.05, 6.5), hMat, HOME_X + 2.2, 0.45, 0);
+  mesh(new THREE.BoxGeometry(4.4, 0.05, 1.1), hMat, HOME_X, 0.45, 0);
+
+  const pilot = new THREE.Group(); pilot.position.set(PILOT_X, 0, PILOT_Z); pilot.rotation.y = 0.35; scene.add(pilot);
+  const jacket = std(0xd6853c, 0.7), pants = std(0x2a333c, 0.8), skin = std(0xe3b48f, 0.7), capM = std(0x2b3640, 0.7);
+  mesh(new THREE.BoxGeometry(0.55, 2.2, 0.55), pants, 0, 1.1, 0.35, pilot);
+  mesh(new THREE.BoxGeometry(0.55, 2.2, 0.55), pants, 0, 1.1, -0.35, pilot);
+  mesh(new THREE.BoxGeometry(0.95, 1.8, 1.3), jacket, 0, 3.0, 0, pilot);
+  mesh(new THREE.SphereGeometry(0.55, 16, 12), skin, 0, 4.35, 0, pilot);
+  mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.32, 16), capM, 0, 4.7, 0, pilot);
+  mesh(new THREE.BoxGeometry(0.7, 0.08, 0.9), capM, 0.5, 4.58, 0, pilot);
+  for (const s of [0.5, -0.5]) { const a = mesh(new THREE.BoxGeometry(1.4, 0.36, 0.36), jacket, 0.55, 3.25, s, pilot); a.rotation.z = -0.55; }
+  mesh(new THREE.BoxGeometry(0.55, 0.28, 1.1), std(0xe7ebee, 0.5), 1.2, 2.95, 0, pilot);
+  for (const s of [0.42, -0.42]) { const a = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 5), std(0xcfd6dc), 1.15, 3.45, s, pilot); a.rotation.z = 0.25; }
+  mesh(new THREE.BoxGeometry(1.8, 0.8, 1.1), std(0x3b4650, 0.7), -2.2, 0.4, 1.2, pilot);
+  pilot.traverse(o => { if (o.isMesh) o.castShadow = true; });
+
+  /* --- the white drone --- */
+  const drone = new THREE.Group(), tilt = new THREE.Group(), yawG = new THREE.Group(), model = new THREE.Group();
+  drone.add(tilt); tilt.add(yawG); yawG.add(model); model.scale.setScalar(1.4); scene.add(drone);
+  const white = std(0xf4f6f8, 0.34, 0.03), white2 = std(0xffffff, 0.24, 0.03), grey = std(0x8a929a, 0.45, 0.25), dark = std(0x1f252b, 0.3, 0.4);
+  const sph = new THREE.SphereGeometry(1, 28, 18);
+  const part = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1) => { const o = mesh(geo, mat, x, y, z, model); o.scale.set(sx, sy, sz); return o; };
+  // slim fuselage: nose section, main body, battery tail
+  part(sph, white, 0.2, 0, 0, 2.2, 0.6, 0.78);
+  part(sph, white2, -0.3, 0.3, 0, 1.6, 0.34, 0.62);
+  part(sph, white, -1.75, -0.02, 0, 1.15, 0.5, 0.66);
+  part(new THREE.BoxGeometry(0.06, 0.26, 1.0), grey, -1.0, 0.08, 0);              // battery seam
+  // nose camera
+  part(sph, dark, 2.25, -0.14, 0, 0.42, 0.42, 0.42);
+  const lens = part(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 16), std(0x6f8ea6, 0.1, 0.6), 2.62, -0.14, 0); lens.rotation.z = Math.PI / 2;
+  // long thin arms in an X, motor pods, two-blade props, small feet
+  const armG = new THREE.BoxGeometry(1, 0.2, 0.26);
+  const props = [], discs = [];
+  const discMat = new THREE.MeshBasicMaterial({ color: 0xf2f5f7, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+  const bladeMat = std(0xe3e8ec, 0.4, 0.05);
+  const MOTORS = [[2.0, 2.9], [2.0, -2.9], [-2.3, 2.9], [-2.3, -2.9]];
+  for (const [mx, mz] of MOTORS) {
+    const sx = mx > 0 ? 0.6 : -0.6, sz = Math.sign(mz) * 0.35;
+    const dx = mx - sx, dz = mz - sz, len = Math.hypot(dx, dz);
+    const arm = part(armG, white, sx + dx / 2, 0.08, sz + dz / 2, len, 1, 1); arm.rotation.y = -Math.atan2(dz, dx);
+    part(new THREE.CylinderGeometry(0.3, 0.34, 0.5, 16), white2, mx, 0.2, mz);
+    part(new THREE.CylinderGeometry(0.16, 0.16, 0.12, 12), grey, mx, 0.5, mz);
+    const blade = part(new THREE.BoxGeometry(2.8, 0.04, 0.22), bladeMat, mx, 0.58, mz); props.push(blade);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.45, 32), discMat); disc.rotation.x = -Math.PI / 2; disc.position.set(mx, 0.6, mz); model.add(disc); discs.push(disc);
+    part(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6), grey, mx, -0.4, mz);
+    part(sph, grey, mx, -0.82, mz, 0.09, 0.09, 0.09);
+  }
+  const ledMat = new THREE.MeshBasicMaterial({ color: 0x3ddc84 }), ledRear = new THREE.MeshBasicMaterial({ color: 0xff4d4d });
+  const ledG = new THREE.SphereGeometry(0.13, 10, 8);
+  for (const [mx, mz] of MOTORS) part(ledG, mx > 0 ? ledMat : ledRear, mx, 0.02, mz + Math.sign(mz) * 0.33);
+  model.traverse(o => { if (o.isMesh && o.material === discMat) o.castShadow = false; });
+
+  /* camera footprint cone (recording) */
+  const coneG = new THREE.ConeGeometry(1, 1, 28, 1, true); coneG.translate(0, -0.5, 0);
+  const cone = new THREE.Mesh(coneG, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.DoubleSide }));
+  scene.add(cone);
+
+  /* --- dashed 3D lines built from short cylinders --- */
+  class Dashes {
+    constructor(n, radius, color) {
+      this.n = n; this.r = radius;
+      this.mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false });
+      this.mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 6), this.mat, n);
+      this.mesh.frustumCulled = false; this.mesh.count = 0; scene.add(this.mesh);
+      this.q = new THREE.Quaternion(); this.v = new V3(); this.m = new THREE.Matrix4(); this.s = new V3();
+    }
+    set(pts, dash, gap, phase) {
+      const segs = []; let L = 0;
+      for (let i = 0; i < pts.length - 1; i++) { const len = pts[i].distanceTo(pts[i + 1]); segs.push({ a: pts[i], b: pts[i + 1], s0: L, len }); L += len; }
+      let c = 0; const per = dash + gap;
+      if (L > 0.5) {
+        for (let s = ((phase % per) + per) % per - per; s < L && c < this.n; s += per) {
+          const s0 = Math.max(0, s), s1 = Math.min(L, s + dash);
+          if (s1 - s0 < 0.3) continue;
+          const mid = (s0 + s1) / 2;
+          const seg = segs.find(g => mid >= g.s0 && mid <= g.s0 + g.len + 1e-6) || segs[segs.length - 1];
+          const dir = this.v.copy(seg.b).sub(seg.a).normalize();
+          const p = seg.a.clone().addScaledVector(dir, mid - seg.s0);
+          this.q.setFromUnitVectors(new V3(0, 1, 0), dir);
+          this.s.set(this.r, s1 - s0, this.r);
+          this.m.compose(p, this.q, this.s);
+          this.mesh.setMatrixAt(c++, this.m);
+        }
+      }
+      this.mesh.count = c; this.mesh.instanceMatrix.needsUpdate = true;
+    }
+    hide() { this.mesh.count = 0; }
+  }
+  const linkDash = new Dashes(160, 0.9, 0x78e6aa);
+  const rthDash = new Dashes(160, 0.8, 0xffffff);
+
+  const xTex = (function () {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    g.lineCap = 'round';
+    g.strokeStyle = '#fff'; g.lineWidth = 30; g.beginPath(); g.moveTo(28, 28); g.lineTo(100, 100); g.moveTo(100, 28); g.lineTo(28, 100); g.stroke();
+    g.strokeStyle = '#ff4a40'; g.lineWidth = 17; g.stroke();
+    return new THREE.CanvasTexture(c);
+  })();
+  const xSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: xTex, depthTest: false, transparent: true }));
+  xSprite.scale.set(34, 34, 1); xSprite.renderOrder = 20; scene.add(xSprite);
+
+  /* --- wind streaks --- */
+  const NS = 240;
+  const streakMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+  const streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.32, 0.32), streakMat, NS);
+  streaks.frustumCulled = false; scene.add(streaks);
+  const SD = []; for (let i = 0; i < NS; i++) SD.push({ u: R(), v: R(), w: R(), sp: 0.7 + R() * 0.6, len: 10 + R() * 22 });
+
+  /* --- camera rigs: offset from the drone and where to look, per story time --- */
+  const RIG = {
+    intro: { off: [[0, [-95, 8, 34]], [2.2, [-98, 9, 38]], [4.2, [-115, 22, 105]], [7, [-125, 34, 165]]],
+             look: [[0, [130, 22, -8]], [2.2, [110, 18, -6]], [4.2, [40, -4, 0]], [7, [70, -25, 0]]] },
+    wind: { off: [[7, [-35, 8, 82]], [19, [-14, 5, 74]], [22.5, [10, 9, 88]], [25, [16, 10, 92]]],
+            look: [[7, [0, -12, 0]], [19, [0, -10, 0]], [25, [-5, -14, 0]]] },
+    batt: { off: [[25, [-70, 34, 120]], [32.4, [-58, 28, 108]], [34.4, [40, 26, 92]], [35.4, [95, 32, 72]], [39.6, [95, 40, 72]], [40.8, [42, 16, 62]], [43, [32, 9, 48]]],
+            look: [[25, [0, -30, 0]], [32.4, [0, -24, 0]], [34.4, [0, -10, 0]], [35.4, [-70, -12, 0]], [39.6, [-20, -14, 0]], [42.4, [0, -1, 0]]] },
+    sig: { off: [[43, [-45, 22, 125]], [45.4, [-80, 34, 200]], [47.6, [-170, 170, 640]], [52.9, [-175, 170, 640]], [55.9, [-150, 60, 420]], [58.2, [110, 45, 210]], [62, [130, 40, 160]]],
+           look: [[43, [35, -10, 0]], [45.4, [10, -22, 0]], [47.6, [-170, -40, 0]], [52.9, [-170, -40, 0]], [55.9, [-150, -90, 0]], [58.2, [-90, -35, 0]], [62, [-70, -25, 0]]] },
+    end: { off: [[62, [-60, 20, 82]], [65.2, [-60, 10, 60]], [70, [-80, 20, 96]]],
+           look: [[62, [0, -10, 0]], [65.2, [-5, 1, 0]], [70, [-10, 5, 0]]] },
+  };
+  RIG.fall = { anchor: [FALL_X, FALL_Y], snapLook: true,
+    off: [[43, [-45, 12, 95]], [46.8, [-55, 4, 120]], [48.9, [-75, -170, 175]], [51, [-85, -180, 190]]],
+    look: [[43, [0, -12, 0]], [47, [0, -6, 0]], [51, [0, 0, 0]]] };
+  for (const k of ['sig', 'end']) for (const list of [RIG[k].off, RIG[k].look]) list.forEach(r => { if (r[0] >= INSERT_AT) r[0] += INSERT_LEN; });
+
+  function vecKeys(keys, t, out) {
+    if (t <= keys[0][0]) return out.fromArray(keys[0][1]);
+    for (let i = 0; i < keys.length - 1; i++) {
+      const a = keys[i], b = keys[i + 1];
+      if (t <= b[0]) { let k = (t - a[0]) / (b[0] - a[0]); k = k * k * (3 - 2 * k); return out.set(a[1][0] + (b[1][0] - a[1][0]) * k, a[1][1] + (b[1][1] - a[1][1]) * k, a[1][2] + (b[1][2] - a[1][2]) * k); }
+    }
+    return out.fromArray(keys[keys.length - 1][1]);
+  }
+
+  /* --- sizing --- */
+  let W = 0, HH = 0, camSnap = true, dirty = true;
+  const camPos = new V3(), camLook = new V3(), tgtPos = new V3(), tgtLook = new V3(), tmpV = new V3(), offV = new V3(), lookV = new V3();
+  function resize() {
+    const r = frame.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    W = r.width; HH = r.height;
+    renderer.setSize(W, HH, false);
+    const aspect = W / HH;
+    camera.aspect = aspect;
+    camera.fov = Math.max(40, 2 * Math.atan(Math.tan(32 * Math.PI / 180) / aspect) * 180 / Math.PI);
+    camera.updateProjectionMatrix();
+    camSnap = true; dirty = true;
+  }
+  new ResizeObserver(resize).observe(frame);
+  resize();
+
+  let curPal = null, windDrift = 0, cloudDrift = 0;
+  const dronePos = new V3();
+
+  function applyPalette(key) {
+    if (curPal === key) return; curPal = key;
+    const p = PAL[key];
+    skyU.top.value.setHex(p.top); skyU.bot.value.setHex(p.bot); skyU.sunCol.value.setHex(p.sun).multiplyScalar(p.sunI);
+    scene.fog.color.setHex(p.fog);
+    sun.color.setHex(p.sun); sun.intensity = p.sunI;
+    hemi.color.setHex(p.hemiS); hemi.groundColor.setHex(p.hemiG); hemi.intensity = p.hemiI;
+    skyU.sunDir.value.set(p.dir[0], p.dir[1], p.dir[2]).normalize();
+    el.grade.style.background = p.grade || 'transparent';
+  }
+
+  function project(v) { tmpV.copy(v).project(camera); return { x: (tmpV.x + 1) / 2 * W, y: (1 - tmpV.y) / 2 * HH, ok: tmpV.z < 1 && tmpV.z > -1 }; }
+
+  /* --- one frame --- */
+  function draw(t, dt) {
+    if (!W) return;
+    const S = stateAt(t);
+    applyPalette(S.key);
+    windDrift += dt * S.ambient * 6;
+    cloudDrift += dt * (4 + S.ambient * 6);
+
+    dronePos.copy(up3(S.x, S.y, S.z));
+    drone.position.copy(dronePos);
+    drone.visible = !S.hide;
+    tilt.rotation.set(S.roll, 0, -S.angle);
+    yawG.rotation.y = (1 - S.face) / 2 * Math.PI;
+    props.forEach((b, i) => { b.rotation.y = t * 55 * S.spin + i * 0.8; });
+    discMat.opacity = 0.32 * S.spin;
+    const hz = S.sev === 'crit' ? 4 : S.sev === 'warn' ? 2 : 1;
+    const on = Math.sin(t * Math.PI * 2 * hz) > -0.2 || S.spin < 0.5;
+    ledMat.color.setHex(on ? (S.sev === 'crit' ? 0xff4a40 : S.sev === 'warn' ? 0xffb020 : 0x3ddc84) : 0x3a4148);
+
+    // camera
+    const rig = RIG[S.key];
+    vecKeys(rig.off, t, offV); vecKeys(rig.look, t, lookV);
+    tgtPos.copy(rig.anchor ? up3(rig.anchor[0], rig.anchor[1], 0) : dronePos).add(offV);
+    tgtPos.y = Math.max(tgtPos.y, heightAt(tgtPos.x, tgtPos.z) + 16);
+    tgtLook.copy(dronePos).add(lookV);
+    if (camSnap) { camPos.copy(tgtPos); camLook.copy(tgtLook); camSnap = false; }
+    else { const k = 1 - Math.exp(-dt * 3.2); camPos.lerp(tgtPos, k); if (rig.snapLook) camLook.copy(tgtLook); else camLook.lerp(tgtLook, k); }
+    camera.position.copy(camPos); camera.lookAt(camLook);
+    sky.position.copy(camPos);
+
+    // sun follows the drone so its shadow stays sharp
+    sun.position.copy(dronePos).addScaledVector(skyU.sunDir.value, 2000);
+    sun.target.position.copy(dronePos);
+
+    // trees bend in the wind chapter
+    const swayAmp = S.key === 'wind' ? S.ambient / 14 * 0.16 : 0;
+    const swayKey = swayAmp > 0 ? Math.round(t * 30) : 'still';
+    if (swayKey !== lastSwayKey) {
+      lastSwayKey = swayKey;
+      for (let i = 0; i < trees.length; i++) {
+        const tr = trees[i];
+        if (swayAmp > 0 && Math.abs(tr.x - dronePos.x) > 1100) continue;
+        placeTree(i, swayAmp * (0.7 + 0.3 * Math.sin(t * 3.1 + tr.ph)));
+      }
+      for (const m of treeMeshes) m.instanceMatrix.needsUpdate = true;
+    }
+
+    // clouds drift with the wind
+    for (const c of clouds) c.g.position.set(((c.u + cloudDrift) % 6000 + 6000) % 6000 - 1200, c.y, c.z);
+
+    // wind streaks around the drone
+    const sa = clamp01((S.ambient - 4.5) / 8) * 0.55;
+    streakMat.opacity = sa;
+    streaks.visible = sa > 0.01;
+    if (streaks.visible) {
+      const m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion(), sc = new V3(), p = new V3();
+      const SPAN = 520;
+      for (let i = 0; i < NS; i++) {
+        const d = SD[i];
+        const ux = ((d.u * SPAN + windDrift * 40 * d.sp) % SPAN) - SPAN / 2;
+        p.set(dronePos.x + ux, dronePos.y - 30 + (d.v - 0.5) * 200 + 4 * Math.sin(t * 2.2 + d.u * 9), (d.w - 0.5) * 300 - 20);
+        sc.set(d.len * (0.6 + S.ambient / 18), 1, 1);
+        m4.compose(p, q0, sc); streaks.setMatrixAt(i, m4);
+      }
+      streaks.instanceMatrix.needsUpdate = true;
+    }
+
+    // radio link
+    const ctrl3 = up3(CTRL.x, CTRL.y, PILOT_Z);
+    xSprite.visible = false;
+    if (S.air < 0.5 || S.key !== 'sig') linkDash.hide();
+    else {
+      const emph = 1;
+      if (S.q >= 0.12) {
+        const weak = S.q < 0.5;
+        linkDash.mat.color.setHex(weak ? 0xffbe50 : 0x78e6aa);
+        linkDash.mat.opacity = (weak ? 0.55 + 0.45 * Math.sin(t * 22) : 0.9) * emph;
+        linkDash.set([ctrl3, dronePos.clone()], 16, 12, t * 50);
+      } else {
+        const bp = S.link.near ? up3(S.link.near.x, S.link.near.y, 0) : dronePos.clone();
+        linkDash.mat.color.setHex(0xff5f55); linkDash.mat.opacity = 0.85 * emph;
+        linkDash.set([ctrl3, bp], 10, 14, t * 20);
+        xSprite.position.copy(bp); xSprite.visible = true;
+      }
+    }
+
+    // return-to-home route
+    if (S.rthY == null || S.air < 0.2) rthDash.hide();
+    else {
+      const ry = GROUND - S.rthY, pts = [dronePos.clone()];
+      if (Math.abs(dronePos.y - ry) > 6 && Math.abs(S.x - HOME_X) > 6) pts.push(new V3(S.x, ry, 0), new V3(HOME_X, ry, 0));
+      else if (Math.abs(S.x - HOME_X) > 6) pts.push(new V3(HOME_X, dronePos.y, 0));
+      pts.push(new V3(HOME_X, GROUND - PAD_Y, 0));
+      rthDash.mat.opacity = 0.7;
+      rthDash.set(pts, 7, 9, -t * 25);
+    }
+
+    // recording footprint
+    cone.visible = S.rec;
+    if (S.rec) {
+      const gx = S.x + 2.2 * Math.cos(yawG.rotation.y), gy = dronePos.y - 1.4;
+      let gh = heightAt(gx, 0); for (const l of LAKE3) if (gx > l.x0 - 100 && gx < l.x1 + 100) gh = Math.max(gh, l.h);
+      const h = Math.max(5, gy - gh);
+      cone.position.set(gx, gy, 0); cone.scale.set(h * 0.36, h, h * 0.36);
+    }
+
+    // splash
+    if (S.splash && S.splash.age < 2.8) {
+      const a = S.splash.age; let c = 0;
+      for (const d of DROPS) {
+        const y = S.splash.h + d.vy * a - 19 * a * a;
+        if (y < S.splash.h - 0.5) continue;
+        sM.compose(sP.set(S.splash.x + d.vx * a, y, d.vz * a), sQ, sS.setScalar(d.r * (1 - a / 2.8)));
+        drops.setMatrixAt(c++, sM);
+      }
+      drops.count = c; drops.instanceMatrix.needsUpdate = true; drops.visible = c > 0;
+      for (const r of ripples) {
+        const ra = a - r.userData.delay;
+        r.visible = ra > 0;
+        if (ra > 0) { r.position.set(S.splash.x, S.splash.h + 0.3, 0); r.scale.setScalar(3 + ra * 30); r.material.opacity = Math.max(0, 0.85 * (1 - ra / 2.4)); }
+      }
+    } else { drops.visible = false; ripples.forEach(r => { r.visible = false; }); }
+
+    renderer.render(scene, camera);
+    apply(S);
+  }
+
+  /* --- overlays --- */
+  const el = {
+    hud: $('hud'), chap: $('hudChap'), mode: $('hudMode'), modeText: $('hudModeText'), wind: $('vWind'),
+    batt: $('vBatt'), battFill: $('battFill'), chipBatt: $('chipBatt'), bars: [...$('bars').children], sig: $('vSig'),
+    chipSig: $('chipSig'), alt: $('vAlt'), rec: $('chipRec'), ff: $('chipFF'), alert: $('alert'),
+    card: $('card'), cardK: $('cardK'), cardT: $('cardT'), title: $('introTitle'), cap: $('caption'), capText: $('captionText'),
+    sum: $('summary'), endMark: $('endMark'), tNow: $('tNow'), track: $('track'), fade: $('fade'), grade: $('grade'),
+    ring: $('ring'), ringArc: $('ringArc'), ringN: $('ringN'), lowbatt: $('lowbatt'), lowbattFill: $('lowbattFill'),
+    homeHint: $('homeHint'), homeDist: $('homeDist'),
+  };
+  const last = {};
+  const set = (key, val, fn) => { if (last[key] !== val) { last[key] = val; fn(val); } };
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  function apply(S) {
+    set('fade', S.fade.toFixed(2), v => el.fade.style.opacity = v);
+    set('hudA', S.hudA.toFixed(2), v => el.hud.style.opacity = v);
+    set('chap', S.chapLabel, v => el.chap.textContent = v);
+    set('mode', S.mode[1] + S.sev, () => { el.modeText.textContent = S.mode[1]; el.mode.className = 'mode ' + S.sev; });
+    set('wind', S.wind.toFixed(1), v => el.wind.textContent = v);
+    set('batt', Math.round(S.batt), v => {
+      el.batt.textContent = v; el.battFill.style.width = (v / 100 * 15).toFixed(1) + 'px';
+      el.chipBatt.className = 'chip glass' + (v <= 20 ? ' crit' : v <= 30 ? ' warn' : '');
+      el.lowbattFill.style.width = Math.max(8, v) + '%';
+      el.lowbatt.className = 'ov marker lowbatt' + (v <= 20 ? ' crit' : '');
+    });
+    set('bars', S.bars, v => {
+      el.bars.forEach((b, i) => b.classList.toggle('on', i < v));
+      el.chipSig.className = 'chip glass' + (v === 0 ? ' lost' : v <= 2 ? ' weak' : '');
+      el.sig.hidden = v !== 0;
+    });
+    set('alt', Math.round(S.alt), v => el.alt.textContent = v);
+    set('rec', S.rec, v => el.rec.hidden = !v);
+    set('ff', S.ff, v => el.ff.hidden = !v);
+    set('alert', S.alert ? S.alert[2] : '', v => {
+      el.alert.hidden = !v;
+      if (v) { el.alert.textContent = v; el.alert.className = 'alert ' + S.alert[3]; }
+    });
+    set('cardA', S.cardA.toFixed(2), v => el.card.style.opacity = v);
+    if (S.card.kicker) { set('cardK', S.card.kicker, v => el.cardK.textContent = v); set('cardT', S.card.name, v => el.cardT.textContent = v); }
+    set('titleA', S.titleA.toFixed(2), v => el.title.style.opacity = v);
+    set('cap', S.cap, v => el.capText.textContent = v);
+    set('capA', S.capA.toFixed(2), v => el.cap.style.opacity = v);
+    set('sumA', S.sumA.toFixed(2), v => el.sum.style.opacity = v);
+    set('endA', S.endA.toFixed(2), v => el.endMark.style.opacity = v);
+    set('ci', S.ci, v => chapBtns.forEach((b, i) => b.setAttribute('aria-current', i === v ? 'true' : 'false')));
+    set('time', Math.floor(r), v => { el.tNow.textContent = fmt(v); el.track.setAttribute('aria-valuenow', v); el.track.setAttribute('aria-valuetext', fmt(v)); });
+    segs.forEach((s, i) => { const C = CHAPTERS[i], a = unwarp(C.t0), b = unwarp(C.t1); s.style.width = (clamp01((r - a) / (b - a)) * 100).toFixed(2) + '%'; });
+
+    const sp = project(dronePos);
+    const showRing = !!S.cd && sp.ok && !S.hide;
+    set('ringOn', showRing, v => el.ring.hidden = !v);
+    if (showRing) {
+      el.ring.style.transform = `translate(${sp.x.toFixed(1)}px,${sp.y.toFixed(1)}px)`;
+      el.ringArc.setAttribute('stroke-dashoffset', (251.3 * (1 - S.cd.frac)).toFixed(1));
+      set('ringN', S.cd.n, v => el.ringN.textContent = v);
+    }
+    const showLb = S.lowb && S.air > 0.3 && sp.ok && S.fade < 0.5;
+    set('lbOn', showLb, v => el.lowbatt.hidden = !v);
+    if (showLb) el.lowbatt.style.transform = `translate(${sp.x.toFixed(1)}px,${sp.y.toFixed(1)}px)`;
+    const dist = (S.x - HOME_X) / 1000;
+    const showHome = S.key !== 'intro' && S.key !== 'end' && dist > 0.4;
+    set('homeOn', showHome, v => el.homeHint.hidden = !v);
+    if (showHome) set('homeDist', dist.toFixed(1), v => el.homeDist.textContent = v);
+  }
+
+  /* --- player --- */
+  const track = $('track'), chapNav = $('chapters');
+  const segs = [], chapBtns = [];
+  CHAPTERS.forEach(C => {
+    const seg = document.createElement('div'); seg.className = 'seg'; seg.style.flex = String(unwarp(C.t1) - unwarp(C.t0));
+    const fill = document.createElement('i'); seg.appendChild(fill); track.appendChild(seg); segs.push(fill);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chap-btn';
+    b.innerHTML = `<small>${fmt(unwarp(C.t0))}</small><span>${C.short}</span>`;
+    b.setAttribute('aria-label', `跳到${C.kicker ? C.kicker + '：' + C.name : C.short}`);
+    b.addEventListener('click', () => { seek(unwarp(C.t0)); setPlaying(true); });
+    chapNav.appendChild(b); chapBtns.push(b);
+  });
+
+  let t = 0, r = 0, playing = false, lastTs = null, dragging = false;
+
+  /* --- narration voice (an <audio> element, plays even with the phone's silent switch on) --- */
+  const voice = (() => {
+    let on = true; try { on = localStorage.getItem('mt-voice') !== '0'; } catch (_) {}
+    const a = document.createElement('audio');
+    a.preload = 'auto'; a.setAttribute('playsinline', ''); a.src = NARR.src; document.body.appendChild(a);
+    let want = false;
+    const align = force => { try { if (a.readyState >= 1 && (force || Math.abs(a.currentTime - r) > 0.25)) a.currentTime = Math.max(0, Math.min(r, (a.duration || 1e9) - 0.05)); } catch (_) {} };
+    a.addEventListener('loadedmetadata', () => align(true));
+    return {
+      get on() { return on; },
+      play() { want = true; if (!on) return; align(true); const p = a.play(); if (p && p.catch) p.catch(() => {}); },
+      pause() { want = false; a.pause(); },
+      seek() { align(true); },
+      tick() {},
+      // while the voice is playing smoothly it is the clock, so a slow phone drops frames instead of cutting the voice
+      clock() { return want && on && !a.paused && !a.seeking && a.readyState >= 3 ? a.currentTime : null; },
+      set(v) { on = v; try { localStorage.setItem('mt-voice', v ? '1' : '0'); } catch (_) {} if (!v) a.pause(); else if (want) this.play(); },
+      audio: a,
+    };
+  })();
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const btnPlay = $('btnPlay'), icoPlay = $('icoPlay'), badge = $('pauseBadge'), badgeIco = $('badgeIco');
+  const P_PLAY = 'M8 5v14l11-7z', P_PAUSE = 'M7 5h4v14H7zM13 5h4v14h-4z', P_REPLAY = 'M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z';
+
+  function syncButtons() {
+    const ended = !playing && r >= RTOT - 0.01;
+    icoPlay.setAttribute('d', playing ? P_PAUSE : ended ? P_REPLAY : P_PLAY);
+    btnPlay.setAttribute('aria-label', playing ? '暫停' : ended ? '重播' : '播放');
+    badge.hidden = playing;
+    badge.classList.toggle('ended', ended);
+    badgeIco.innerHTML = `<path d="${ended ? P_REPLAY : P_PLAY}"/>`;
+  }
+  function setPlaying(p) {
+    if (p && r >= RTOT - 0.01) { r = 0; t = 0; camSnap = true; }
+    playing = p; dirty = true; syncButtons();
+    if (p) voice.play(); else voice.pause();
+  }
+  function seek(nr) { r = clamp(nr, 0, RTOT); t = warp(r); camSnap = true; dirty = true; lastSwayKey = null; syncButtons(); voice.seek(); }
+
+  btnPlay.addEventListener('click', () => setPlaying(!playing));
+  $('btnReplay').addEventListener('click', () => { seek(0); setPlaying(true); });
+  frame.addEventListener('click', () => setPlaying(!playing));
+  frame.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPlaying(!playing); } });
+
+  const seekFromX = cx => { const b = track.getBoundingClientRect(); seek(clamp01((cx - b.left) / b.width) * RTOT); };
+  track.addEventListener('pointerdown', e => { dragging = true; try { track.setPointerCapture(e.pointerId); } catch (_) {} seekFromX(e.clientX); });
+  track.addEventListener('pointermove', e => { if (dragging) seekFromX(e.clientX); });
+  const endDrag = () => { dragging = false; };
+  track.addEventListener('pointerup', endDrag); track.addEventListener('pointercancel', endDrag);
+  track.addEventListener('keydown', e => {
+    const m = { ArrowRight: 5, ArrowLeft: -5, ArrowUp: 5, ArrowDown: -5 };
+    if (e.key in m) { e.preventDefault(); seek(r + m[e.key]); }
+    else if (e.key === 'Home') { e.preventDefault(); seek(0); }
+    else if (e.key === 'End') { e.preventDefault(); seek(RTOT); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === ' ' && (e.target === document.body || e.target === document.documentElement)) { e.preventDefault(); setPlaying(!playing); }
+    else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) setVoice(!voice.on);
+  });
+  const btnVoice = $('btnVoice');
+  function setVoice(v) { voice.set(v); btnVoice.setAttribute('aria-pressed', v ? 'true' : 'false'); btnVoice.setAttribute('aria-label', v ? '語音旁白：開（按一下關掉）' : '語音旁白：關（按一下打開）'); }
+  setVoice(voice.on);
+  btnVoice.addEventListener('click', e => { e.stopPropagation(); setVoice(!voice.on); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && playing) setPlaying(false); });
+
+  const btnFs = $('btnFs');
+  if (!frame.requestFullscreen) btnFs.hidden = true;
+  btnFs.addEventListener('click', () => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else frame.requestFullscreen().catch(() => {});
+    } catch (_) {}
+  });
+
+  function loop(ts) {
+    const dt = lastTs == null ? 0 : Math.min(0.1, (ts - lastTs) / 1000);
+    lastTs = ts;
+    if (playing && !dragging) {
+      const vc = voice.clock();
+      r = vc != null ? vc : r + dt;
+      if (r >= RTOT) { r = RTOT; playing = false; syncButtons(); voice.pause(); dirty = true; }
+    }
+    const tn = warp(r), adt = Math.max(0, tn - t);
+    t = tn;
+    if (playing || dirty) { draw(t, playing ? adt : 0); dirty = false; }
+    requestAnimationFrame(loop);
+  }
+  syncButtons();
+  draw(0, 0);
+  requestAnimationFrame(loop);
+})();
+</script>
+
+<script>(() => { const sa = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone; if (!sa) document.getElementById('install').hidden = false; })();</script>
+</body>
+</html>

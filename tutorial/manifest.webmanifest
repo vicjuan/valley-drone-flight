@@ -1,0 +1,25 @@
+{
+  "name": "山區飛行教學",
+  "short_name": "飛行教學",
+  "description": "立體動畫：無人機在山區遇到強風、沒電、收不到訊號時怎麼做（有語音旁白）",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c1218",
+  "theme_color": "#0c1218",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

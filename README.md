@@ -8,6 +8,8 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 
 **♪ 音樂 App：<https://vicjuan.github.io/valley-drone-flight/player/>**（五首原創曲，每首都有 3D 動畫，關掉螢幕也能聽）
 
+**🎬 教學 App：<https://vicjuan.github.io/valley-drone-flight/tutorial/>**（立體動畫，有中文語音旁白：無人機在山區遇到強風、沒電、收不到訊號時怎麼做）
+
 ![遊戲畫面](docs/screenshot.jpg)
 
 ## 場景
@@ -76,6 +78,16 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 - 音樂用手機一般播放音樂的方式播，用 Safari 開的時候，關掉螢幕或切到別的 App 都會繼續播，鎖定畫面上可以暫停和切歌。
 - 變成 App：在 iPhone、iPad 用 Safari 打開網址，按「分享」→「加入主畫面」，主畫面就會出現「空拍音樂」圖示；Android 用 Chrome 選「加到主畫面」。
 
+## 教學 App「飛行教學」
+
+`tutorial/` 是一段約 2 分半的立體動畫教學，有中文語音旁白，字幕跟著聲音走：
+
+- 狀況一・強風：機身斜向迎風面頂住風，頂不住會漂移、更耗電 → 降低高度避風，必要時提早返航。
+- 狀況二・沒電：30% 跳出提醒，到返航門檻自動返航；電量用完會直接掉下來。
+- 狀況三・沒訊號：先原地懸停等訊號，等不到就爬升、自動返航。
+
+播放鍵旁的喇叭按鈕可以開關旁白（電腦按 V）；章節按鈕可以直接跳到想看的狀況。旁白是用開源的語音合成模型（[Kokoro v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh)，Apache-2.0 授權）事先產生的；旁白比字幕長的地方，動畫會放慢一點，讓畫面、字幕和聲音對齊。加到主畫面的方法跟音樂 App 一樣。
+
 ## 執行
 
 - 直接用瀏覽器打開 `index.html` 就能玩，需要網路來載入 three.js 和字型。
@@ -117,6 +129,7 @@ manifest.webmanifest   加入主畫面用的設定
 icons/                 主畫面圖示
 music/                 五首背景音樂
 player/                音樂 App「空拍音樂」（播放器和五段 3D 動畫）
+tutorial/              教學 App「飛行教學」（立體動畫和語音旁白）
 style.css              樣式
 src/core.js            兩個場景的地形、風、訊號、電量、飛行模型、自動返航、任務規則（不碰畫面）
 src/desert.js          沙漠場景：棕櫚樹、地標、揚沙、沙牆崩塌、會倒的土磚牆
