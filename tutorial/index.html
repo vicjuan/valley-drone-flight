@@ -195,7 +195,7 @@ body{
 <div class="wrap">
   <header class="head">
     <h1>山區飛行三狀況（立體版）</h1>
-    <p>白色無人機遇到強風、沒電、收不到訊號時會怎麼做｜有語音旁白｜約 2 分 30 秒</p>
+    <p>白色無人機遇到強風、沒電、收不到訊號時會怎麼做｜有語音旁白｜約 2 分 54 秒</p>
   </header>
   <p class="install" id="install" hidden>變成手機上的 App：用 <b>Safari</b> 打開這一頁，按下方的「分享」，再選「<b>加入主畫面</b>」。之後從主畫面的「飛行教學」圖示打開就好。</p>
 
@@ -248,7 +248,7 @@ body{
     <div class="ov center summary" id="summary" style="opacity:0">
       <div class="sum-in">
         <h2>重點整理</h2>
-        <div class="sum-row"><span class="tag tag-wind">強風</span><p>機身斜向迎風面頂住風，頂不住就會漂移、晃動、更耗電 → <b>降低高度避風，必要時提早返航</b></p></div>
+        <div class="sum-row"><span class="tag tag-wind">強風</span><p>機身斜向迎風面頂住風；風再大就頂不住，會被吹走、回不了家 → <b>降低高度避風，提早返航</b></p></div>
         <div class="sum-row"><span class="tag tag-batt">沒電</span><p>30% 跳出提醒，降到返航門檻就自動返航；電量真的用完，馬達停轉會直接掉下來 → <b>一定要提早返航</b></p></div>
         <div class="sum-row"><span class="tag tag-sig">沒訊號</span><p>先原地懸停等訊號 → <b>等不到就爬升、自動返航</b>，越過山稜後訊號恢復</p></div>
         <div class="end-mark" id="endMark" style="opacity:0">完</div>
@@ -265,8 +265,8 @@ body{
     <button class="ctl" id="btnPlay" type="button" aria-label="播放">
       <svg viewBox="0 0 24 24"><path id="icoPlay" d="M8 5v14l11-7z"/></svg>
     </button>
-    <div class="time"><span id="tNow">0:00</span> / <span id="tTot">2:30</span></div>
-    <div class="track" id="track" role="slider" tabindex="0" aria-label="播放進度" aria-valuemin="0" aria-valuemax="150" aria-valuenow="0"></div>
+    <div class="time"><span id="tNow">0:00</span> / <span id="tTot">2:54</span></div>
+    <div class="track" id="track" role="slider" tabindex="0" aria-label="播放進度" aria-valuemin="0" aria-valuemax="174" aria-valuenow="0"></div>
     <button class="ctl" id="btnReplay" type="button" aria-label="從頭播放">
       <svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
     </button>
@@ -285,26 +285,25 @@ body{
 
 <script>
 /* ===== narration: time map between real time (what the viewer sees on the clock) and film time ===== */
-const NARR = {"knots": [[0.0, 0.0], [0.25, 0.25], [6.6473, 3.0], [10.9945, 6.6], [11.4445, 7.05], [13.9077, 8.8], [19.5179, 12.6], [25.1912, 16.4], [29.3779, 19.8], [36.7246, 25], [36.7746, 25.05], [39.3359, 26.8], [43.1298, 29.6], [47.2549, 32.6], [54.0128, 35.4], [59.0631, 39.8], [65.9407, 43], [65.9907, 43.05], [69.6502, 44.6], [75.33, 47], [80.3561, 48.901022284000845], [84.3758, 51], [84.4258, 51.05], [87.3442, 52.8], [90.9948, 54.6], [94.3281, 55.8], [100.3622, 60.9], [104.8687, 63], [110.0257, 66.6], [113.7992, 70], [114.1992, 70.4], [119.8499, 73.4], [120.0499, 73.6], [148.5659, 75.6], [150.9659, 78]], "total": 150.966, "src": "narration.mp3"};
+const NARR = {"knots": [[0.0, 0], [0.25, 0.25], [6.6461, 3.0], [10.9931, 6.6], [11.4431, 7.05], [13.9064, 8.8], [19.5166, 12.6], [25.1887, 16.4], [29.3733, 19.8], [36.7005, 25], [36.7005, 78], [36.7505, 78.05], [40.4115, 80.4], [44.0856, 83], [50.0197, 87], [55.1761, 90.4], [60.5505, 92], [60.5505, 25], [60.6005, 25.05], [63.1617, 26.8], [66.9557, 29.6], [71.0821, 32.6], [77.8426, 35.4], [82.8912, 39.8], [89.7688, 43], [89.8188, 43.05], [93.4785, 44.6], [99.1587, 47], [104.1847, 48.901], [108.211, 51], [108.261, 51.05], [111.1792, 52.8], [114.83, 54.6], [118.1609, 55.8], [124.1948, 60.9], [128.7012, 63], [133.857, 66.6], [137.6298, 70], [138.0298, 70.4], [143.6873, 73.4], [143.8873, 73.6], [172.425, 75.6], [174.825, 78]], "total": 174.825, "chapters": [{"key": "intro", "short": "開場", "kicker": null, "name": null, "r0": 0.0, "r1": 11.393}, {"key": "wind", "short": "強風", "kicker": "狀況一", "name": "風很大的時候", "r0": 11.393, "r1": 36.701}, {"key": "gust", "short": "被吹走", "kicker": "狀況一・補充", "name": "風大到頂不住的時候", "r0": 36.701, "r1": 60.55}, {"key": "batt", "short": "沒電", "kicker": "狀況二", "name": "快要沒電的時候", "r0": 60.55, "r1": 89.769}, {"key": "fall", "short": "掉落", "kicker": "狀況二・補充", "name": "電量真的用完的時候", "r0": 89.769, "r1": 108.211}, {"key": "sig", "short": "沒訊號", "kicker": "狀況三", "name": "收不到訊號的時候", "r0": 108.211, "r1": 137.63}, {"key": "end", "short": "結尾", "kicker": null, "name": null, "r0": 137.63, "r1": 174.825}], "src": "narration.mp3"};
 const RTOT = NARR.total;
 function warp(r) {
+  // knots are in play order; two knots with the same real time are a cut to another piece of the film
   const K = NARR.knots;
-  if (r <= 0) return 0;
-  for (let i = 1; i < K.length; i++) if (r <= K[i][0]) { const a = K[i - 1], b = K[i]; return a[1] + (b[1] - a[1]) * (r - a[0]) / (b[0] - a[0]); }
+  if (r <= K[0][0]) return K[0][1];
+  for (let i = 0; i < K.length - 1; i++) {
+    const a = K[i], b = K[i + 1];
+    if (b[0] - a[0] < 1e-6) continue;
+    if (r < b[0] || i === K.length - 2) return a[1] + (b[1] - a[1]) * Math.min(1, (r - a[0]) / (b[0] - a[0]));
+  }
   return K[K.length - 1][1];
-}
-function unwarp(t) {
-  const K = NARR.knots;
-  if (t <= 0) return 0;
-  for (let i = 1; i < K.length; i++) if (t <= K[i][1] && K[i][1] > K[i - 1][1]) { const a = K[i - 1], b = K[i]; return a[0] + (b[0] - a[0]) * (t - a[1]) / (b[1] - a[1]); }
-  return K[K.length - 1][0];
 }
 </script>
 
 <script id="core">
 /* ===== Timeline and world model (pure, no DOM). Story coordinates: x along the flight, y measured DOWN from the sky
    (GROUND = 640 is the takeoff plain), z = 0 is the flight line. 3D height = GROUND - y. 1 unit = 1 m. ===== */
-const TOTAL = 78, GROUND = 640, HOME_X = 330, PILOT_X = 285, PILOT_Z = 22, PAD_Y = 638.3;
+const TOTAL = 92, GROUND = 640, HOME_X = 330, PILOT_X = 285, PILOT_Z = 22, PAD_Y = 638.3;
 const CTRL = { x: PILOT_X + 1.2, y: 637 };
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -349,7 +348,10 @@ const CHAPTERS = [
   { key: 'fall', label: '狀況二・電量用完', kicker: '狀況二・補充', name: '電量真的用完的時候', short: '掉落', t0: 43, t1: 51 },
   { key: 'sig', label: '狀況三・沒訊號', kicker: '狀況三', name: '收不到訊號的時候', short: '沒訊號', t0: 51, t1: 70 },
   { key: 'end', label: '結尾', short: '結尾', t0: 70, t1: 78 },
+  // played right after the wind chapter (the player's time map puts it there); authored after the end so nothing else moves
+  { key: 'gust', label: '狀況一・頂不住', kicker: '狀況一・補充', name: '風大到頂不住的時候', short: '被吹走', t0: 78, t1: 92 },
 ];
+const GUST_LAND = { x: 1662, y: terrainY(1662) - 1.7 }; // a gentle bit of slope above the valley lake, 1.3 km from home
 
 const DATA = {
   intro: {
@@ -387,6 +389,15 @@ const DATA = {
     face: [[43, 1], [55.9, 1], [56.7, -1]], spin: [[43, 1]], batt: [[43, 61], [62, 52]], wind: [[43, 3.4]],
     mode: [[43, '飛往拍攝點', 'ok'], [46.6, '訊號微弱', 'warn'], [47.8, '失聯・懸停等待', 'crit'],
            [52.9, '失聯・自動返航', 'crit'], [SIG_BACK, '訊號恢復・返航中', 'ok']],
+  },
+  gust: {
+    path: [{ t: 78, x: 1436, y: 300, stop: 1 }, { t: 80.4, x: 1442, y: 301 }, { t: 83, x: 1495, y: 308 },
+           { t: 87, x: 1628, y: 440 }, { t: 89.6, x: 1660, y: GUST_LAND.y - 6 }, { t: 90.4, x: GUST_LAND.x, y: GUST_LAND.y, stop: 1 },
+           { t: 92, x: GUST_LAND.x, y: GUST_LAND.y, stop: 1 }],
+    face: [[78, 1], [82.8, 1], [83.6, -1]], spin: [[78, 1], [90.6, 1], [91.4, 0]],
+    batt: [[78, 62], [80.4, 60], [83, 54], [87, 36], [90.4, 31]],
+    wind: [[78, 11], [80.4, 12.5], [83, 17], [87, 17.5], [90.4, 15], [92, 14]],
+    mode: [[78, '強風警告', 'warn'], [80.4, '風速持續增強', 'warn'], [83, '頂不住・被風吹走', 'crit'], [87, '電量不足・就地迫降', 'crit'], [90.4, '已迫降・離起飛點很遠', 'crit']],
   },
   end: {
     path: [{ t: 62, x: HOME_X, y: 330 }, { t: 65.2, x: HOME_X, y: PAD_Y, stop: 1 }, { t: 70, x: HOME_X, y: PAD_Y, stop: 1 }],
@@ -451,6 +462,15 @@ CAPTIONS.push(
   [T_IMPACT, 51, '所以電量一到返航門檻，就一定要回家。']);
 ALERTS.push([45.6, 47.0, '電量即將耗盡', 'crit'], [47.0, T_IMPACT, '電量 0%：馬達停轉', 'crit'], [T_IMPACT, T_IMPACT + 1.7, '飛機墜入湖中', 'crit']);
 LOWB.push([43, 47.0]);
+/* Wind too strong to fight: the drone is blown away from home and has to land far out in the valley (78–92 s, played after 25 s). */
+CAPTIONS.push(
+  [80.4, 83, '要是不理強風警告，風還一直變大⋯⋯'],
+  [83, 87, '風大過推力上限，飛機想往回飛也頂不住，被一路吹離起飛點。'],
+  [87, 90.4, '電量撐不到回家，只能在離起飛點很遠的山谷裡迫降。'],
+  [90.4, 92, '所以強風警告一出現，就要降低高度，並且提早返航。']);
+ALERTS.push([80.6, 82.6, '強風警告：風速 15 m/s', 'warn'], [83, 85, '風速超過上限：無法返航', 'crit'], [87, 89, '電量不足：就地迫降', 'crit']);
+LOWB.push([87, 92]);
+CUTS.push(78, 92);
 
 function chapterAt(t) { for (let i = CHAPTERS.length - 1; i >= 0; i--) if (t >= CHAPTERS[i].t0) return i; return 0; }
 function keysLerp(keys, t, ease) {
@@ -510,8 +530,8 @@ function stateAt(tIn) {
   const ambient = Math.max(0, keysLerp(D.wind, t, true) + 0.35 * Math.sin(t * 1.7) + 0.25 * Math.sin(t * 3.3 + 1));
   const shelter = C.key === 'wind' ? 1 - 0.62 * smooth(19.8, 22.2, t) : 1;
   const wind = ambient * shelter;
-  const air = clamp01((PAD_Y - p.y) / 26);
-  const A = C.key === 'wind' ? clamp01((wind - 6.5) / 7) : 0;
+  const air = C.key === 'gust' ? clamp01((terrainY(p.x) - 1.7 - p.y) / 26) : clamp01((PAD_Y - p.y) / 26);
+  const A = C.key === 'wind' ? clamp01((wind - 6.5) / 7) : C.key === 'gust' ? clamp01((wind - 6.5) / 7) * (1 - smooth(88.6, 90.0, t)) : 0;
   let x = p.x + A * (6 * Math.sin(t * 11.3) + 3.5 * Math.sin(t * 17.9 + 1));
   let y = p.y + A * (4 * Math.sin(t * 9.7 + 2) + 2.5 * Math.sin(t * 23.1)) + 2.2 * Math.sin(t * 2.1) * air;
   const z = A * 5 * Math.sin(t * 7.3 + 0.5);
@@ -555,7 +575,7 @@ function stateAt(tIn) {
     t, ci, key: C.key, chapLabel: C.label, card: C, x, y, z, angle, roll, face, spin, batt, wind, ambient, air,
     mode, sev: mode[2], q, bars, link,
     cap: cap ? cap[2] : '', capA, alert: inWin(ALERTS, t), cardA,
-    titleA: 1 - smooth(2.3, 2.9, t), sumA: smooth(73.6, 74.2, t), endA: smooth(75.6, 76.2, t), hudA, splash, hide,
+    titleA: 1 - smooth(2.3, 2.9, t), sumA: C.key === 'end' ? smooth(73.6, 74.2, t) : 0, endA: C.key === 'end' ? smooth(75.6, 76.2, t) : 0, hudA, splash, hide,
     fade: clamp01(fade), rec: !!inWin(REC, t), ff: !!inWin(FF, t), rthY: rth ? rth[2] : null,
     lowb: !!inWin(LOWB, t), cd, alt: Math.max(0, PAD_Y - y),
   };
@@ -600,6 +620,7 @@ function stateAt(tIn) {
     end: { top: 0x7a8fbb, bot: 0xf3d9b6, fog: 0xe6d2b9, sun: 0xffd9a8, sunI: 1.05, hemiS: 0xf1e2ce, hemiG: 0x676150, hemiI: 0.7, dir: [-0.75, 0.38, 0.5], grade: 'rgba(255,140,60,0.07)' },
   };
   PAL.fall = PAL.batt;
+  PAL.gust = { top: 0x67798c, bot: 0xbfc6cd, fog: 0xb3bcc5, sun: 0xe6eaee, sunI: 0.42, hemiS: 0xcdd4db, hemiG: 0x5a5f65, hemiI: 0.84, dir: [-0.45, 0.8, 0.4], grade: 'rgba(24,40,58,0.13)' };
 
   /* --- sky dome --- */
   const skyU = { top: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new V3(0, 1, 0) }, sunCol: { value: new THREE.Color() } };
@@ -908,6 +929,8 @@ function stateAt(tIn) {
     off: [[43, [-45, 12, 95]], [46.8, [-55, 4, 120]], [48.9, [-75, -170, 175]], [51, [-85, -180, 190]]],
     look: [[43, [0, -12, 0]], [47, [0, -6, 0]], [51, [0, 0, 0]]] };
   for (const k of ['sig', 'end']) for (const list of [RIG[k].off, RIG[k].look]) list.forEach(r => { if (r[0] >= INSERT_AT) r[0] += INSERT_LEN; });
+  RIG.gust = { off: [[78, [-45, 10, 95]], [83, [-70, 16, 120]], [87, [-110, 40, 170]], [89.6, [-70, 22, 115]], [92, [-42, 12, 74]]],
+               look: [[78, [0, -10, 0]], [83, [15, -10, 0]], [87, [10, -20, 0]], [90.4, [0, -2, 0]], [92, [0, -2, 0]]] };
 
   function vecKeys(keys, t, out) {
     if (t <= keys[0][0]) return out.fromArray(keys[0][1]);
@@ -986,7 +1009,7 @@ function stateAt(tIn) {
     sun.target.position.copy(dronePos);
 
     // trees bend in the wind chapter
-    const swayAmp = S.key === 'wind' ? S.ambient / 14 * 0.16 : 0;
+    const swayAmp = S.key === 'wind' || S.key === 'gust' ? S.ambient / 14 * 0.16 : 0;
     const swayKey = swayAmp > 0 ? Math.round(t * 30) : 'still';
     if (swayKey !== lastSwayKey) {
       lastSwayKey = swayKey;
@@ -1123,9 +1146,9 @@ function stateAt(tIn) {
     set('capA', S.capA.toFixed(2), v => el.cap.style.opacity = v);
     set('sumA', S.sumA.toFixed(2), v => el.sum.style.opacity = v);
     set('endA', S.endA.toFixed(2), v => el.endMark.style.opacity = v);
-    set('ci', S.ci, v => chapBtns.forEach((b, i) => b.setAttribute('aria-current', i === v ? 'true' : 'false')));
+    set('ci', S.key, v => chapBtns.forEach(b => b.setAttribute('aria-current', b.dataset.key === v ? 'true' : 'false')));
     set('time', Math.floor(r), v => { el.tNow.textContent = fmt(v); el.track.setAttribute('aria-valuenow', v); el.track.setAttribute('aria-valuetext', fmt(v)); });
-    segs.forEach((s, i) => { const C = CHAPTERS[i], a = unwarp(C.t0), b = unwarp(C.t1); s.style.width = (clamp01((r - a) / (b - a)) * 100).toFixed(2) + '%'; });
+    segs.forEach((s, i) => { const C = NARR.chapters[i]; s.style.width = (clamp01((r - C.r0) / (C.r1 - C.r0)) * 100).toFixed(2) + '%'; });
 
     const sp = project(dronePos);
     const showRing = !!S.cd && sp.ok && !S.hide;
@@ -1147,13 +1170,13 @@ function stateAt(tIn) {
   /* --- player --- */
   const track = $('track'), chapNav = $('chapters');
   const segs = [], chapBtns = [];
-  CHAPTERS.forEach(C => {
-    const seg = document.createElement('div'); seg.className = 'seg'; seg.style.flex = String(unwarp(C.t1) - unwarp(C.t0));
+  NARR.chapters.forEach(C => {
+    const seg = document.createElement('div'); seg.className = 'seg'; seg.style.flex = String(C.r1 - C.r0);
     const fill = document.createElement('i'); seg.appendChild(fill); track.appendChild(seg); segs.push(fill);
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chap-btn';
-    b.innerHTML = `<small>${fmt(unwarp(C.t0))}</small><span>${C.short}</span>`;
+    b.innerHTML = `<small>${fmt(C.r0)}</small><span>${C.short}</span>`; b.dataset.key = C.key;
     b.setAttribute('aria-label', `跳到${C.kicker ? C.kicker + '：' + C.name : C.short}`);
-    b.addEventListener('click', () => { seek(unwarp(C.t0)); setPlaying(true); });
+    b.addEventListener('click', () => { seek(C.r0); setPlaying(true); });
     chapNav.appendChild(b); chapBtns.push(b);
   });
 
@@ -1241,7 +1264,8 @@ function stateAt(tIn) {
       r = vc != null ? vc : r + dt;
       if (r >= RTOT) { r = RTOT; playing = false; syncButtons(); voice.pause(); dirty = true; }
     }
-    const tn = warp(r), adt = Math.max(0, tn - t);
+    const tn = warp(r); let adt = tn - t;
+    if (adt < 0 || adt > 1) { camSnap = true; lastSwayKey = null; adt = 0; }  // a cut to another piece of the film
     t = tn;
     if (playing || dirty) { draw(t, playing ? adt : 0); dirty = false; }
     requestAnimationFrame(loop);
