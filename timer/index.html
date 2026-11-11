@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>無人機計時器</title>
+<meta name="description" content="計時器：計時的時候無人機在沙漠裡到處飛，時間到就掉下來。">
+<meta name="theme-color" content="#0b1015">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="空拍計時">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@900&display=swap">
+<style>
+/* Layout: the 3D desert fills the screen; one glass layer on top at a time: the time setting card, the countdown with its controls, or the "time's up" card. Dark on purpose, like the game's HUD. */
+:root{
+  color-scheme:dark;
+  --bg:#0b1015;
+  --glass:rgba(12,18,24,.64);
+  --glass-2:rgba(22,30,38,.82);
+  --line:rgba(220,235,245,.16);
+  --fg:#f3f6f8;
+  --muted:#aab6bf;
+  --accent:#ff9a3c;
+  --accent-ink:#1b1006;
+  --ok:#55d68f;
+  --crit:#ff6159;
+  --f-data:"Azeret Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Heiti TC",system-ui,sans-serif;
+  --f-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.shade{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(8,12,16,.42) 0%,rgba(8,12,16,0) 32%,rgba(8,12,16,0) 55%,rgba(8,12,16,.55) 100%);transition:opacity .5s}
+.shade.dim{background:rgba(8,12,16,.38)}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;gap:14px;
+  padding-top:max(18px,calc(env(safe-area-inset-top,0px) + 10px));padding-bottom:max(18px,calc(env(safe-area-inset-bottom,0px) + 12px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.screen > *{pointer-events:auto}
+.spacer{flex:1;pointer-events:none!important}
+.brand{text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.eyebrow{font:600 12px/1.2 var(--f-body);letter-spacing:.14em;color:#ffd7ae}
+h1{margin:4px 0 0;font:900 clamp(28px,7.5vw,40px)/1.15 var(--f-display)}
+.card{width:min(460px,100%);background:var(--glass);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:20px;padding:18px 16px 16px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.dial{display:flex;justify-content:center;align-items:center;gap:6px}
+.col{display:grid;grid-template-rows:auto auto auto;justify-items:center;gap:2px}
+.num{width:2.3ch;font:700 clamp(58px,17vw,84px)/1 var(--f-data);font-variant-numeric:tabular-nums;color:var(--fg);background:transparent;border:0;border-radius:12px;text-align:center;padding:4px 0;caret-color:var(--accent);outline:none}
+.num:focus-visible,.num:focus{background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 2px rgba(255,154,60,.6)}
+.colon{font:700 clamp(50px,14vw,72px)/1 var(--f-data);color:var(--muted);margin-bottom:22px}
+.unit{font-size:13px;color:var(--muted);letter-spacing:.1em}
+.step{appearance:none;border:1px solid var(--line);background:var(--glass-2);color:var(--fg);width:64px;height:36px;border-radius:12px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation}
+.step svg{width:18px;height:18px;fill:currentColor}
+.presets{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.chip{appearance:none;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--fg);font:500 14px/1 var(--f-body);padding:9px 12px;border-radius:999px;cursor:pointer;touch-action:manipulation}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:rgba(255,154,60,.12)}
+.row{display:flex;gap:10px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--glass-2);color:var(--fg);font:700 16px/1 var(--f-body);height:52px;padding:0 16px;border-radius:14px;cursor:pointer;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn svg{width:20px;height:20px;fill:currentColor}
+.btn.go{flex:1;background:var(--accent);color:var(--accent-ink);border-color:transparent;font-size:18px;box-shadow:0 8px 24px rgba(255,154,60,.3)}
+.btn.go:disabled{opacity:.45;box-shadow:none;cursor:default}
+.btn.toggle[aria-pressed="false"]{color:var(--muted)}
+.btn:focus-visible,.step:focus-visible,.chip:focus-visible{outline:2px solid #8fc3ee;outline-offset:2px}
+.btn:active,.step:active,.chip:active{transform:translateY(1px)}
+.hint{margin:0;color:var(--muted);font-size:13px;line-height:1.55;text-align:center}
+/* countdown */
+.clock{display:flex;flex-direction:column;align-items:center;gap:8px;text-shadow:0 3px 18px rgba(0,0,0,.55)}
+.big{font:700 clamp(64px,20vw,120px)/1 var(--f-data);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.big.paused{animation:blink 1.2s steps(2,start) infinite}
+@keyframes blink{to{opacity:.35}}
+.batt{display:flex;align-items:center;gap:10px;font:600 13px/1 var(--f-data);color:var(--fg);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:7px 12px 7px 10px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.cell{position:relative;width:34px;height:15px;border:2px solid currentColor;border-radius:4px}
+.cell::after{content:"";position:absolute;right:-5px;top:3px;width:3px;height:5px;background:currentColor;border-radius:0 2px 2px 0}
+.cell i{position:absolute;left:1px;top:1px;bottom:1px;width:calc(100% - 2px);background:var(--ok);border-radius:1px;transform-origin:left center}
+.batt.low .cell i{background:var(--crit)}
+.batt.mid .cell i{background:#ffc04d}
+.controls{display:flex;gap:10px;width:min(460px,100%)}
+.controls .btn{flex:1;background:var(--glass);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.controls .btn.main{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+/* time's up */
+.up{text-align:center;align-items:center}
+.up h2{margin:0;font:900 clamp(36px,10vw,52px)/1.1 var(--f-display);color:#ffd7ae}
+.up p{margin:0;color:var(--muted)}
+.up .row{width:100%}
+.up .btn{flex:1}
+.fade{position:fixed;inset:0;background:#0b1015;opacity:0;pointer-events:none;transition:opacity .35s}
+.fade.on{opacity:1}
+.nogl{position:fixed;left:0;right:0;top:40%;text-align:center;color:var(--muted);padding:0 24px}
+@media (max-height:620px){.card{gap:10px;padding:14px 14px 12px}.num{font-size:54px}.colon{font-size:46px}.step{height:32px}.btn{height:46px}h1{font-size:26px}}
+@media (prefers-reduced-motion:reduce){.big.paused{animation:none;opacity:.6}}
+</style>
+</head>
+<body>
+<canvas id="cv" aria-hidden="true"></canvas>
+<div class="shade dim" id="shade"></div>
+<p class="nogl" id="nogl" hidden>這台裝置沒辦法顯示 3D 畫面，計時器一樣可以用。</p>
+
+<section class="screen" id="setup" aria-label="設定時間">
+  <header class="brand"><div class="eyebrow">山谷空拍</div><h1>無人機計時器</h1></header>
+  <div class="spacer"></div>
+  <div class="card">
+    <div class="dial">
+      <div class="col">
+        <button class="step" type="button" data-f="m" data-d="1" aria-label="加一分鐘"><svg viewBox="0 0 24 24"><path d="M12 7l7 8H5z"/></svg></button>
+        <input class="num" id="inMin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="05" aria-label="分鐘" autocomplete="off">
+        <button class="step" type="button" data-f="m" data-d="-1" aria-label="減一分鐘"><svg viewBox="0 0 24 24"><path d="M12 17l7-8H5z"/></svg></button>
+        <span class="unit">分</span>
+      </div>
+      <span class="colon">:</span>
+      <div class="col">
+        <button class="step" type="button" data-f="s" data-d="5" aria-label="加五秒"><svg viewBox="0 0 24 24"><path d="M12 7l7 8H5z"/></svg></button>
+        <input class="num" id="inSec" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="00" aria-label="秒" autocomplete="off">
+        <button class="step" type="button" data-f="s" data-d="-5" aria-label="減五秒"><svg viewBox="0 0 24 24"><path d="M12 17l7-8H5z"/></svg></button>
+        <span class="unit">秒</span>
+      </div>
+    </div>
+    <div class="presets" id="presets" role="group" aria-label="常用時間"></div>
+    <div class="row">
+      <button class="btn toggle" id="sound" type="button" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.4-2h-4.8a2.5 2.5 0 0 0 2.4 2zm7-6V11a7 7 0 0 0-5.5-6.8V3.5a1.5 1.5 0 0 0-3 0v.7A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg><span id="soundTxt">鈴聲 開</span></button>
+      <button class="btn go" id="start" type="button"><svg viewBox="0 0 24 24"><path d="M7 4.5v15L19.5 12z"/></svg>開始計時</button>
+    </div>
+    <p class="hint">計時的時候，無人機會在沙漠裡到處飛，太陽慢慢下山；時間一到，電量用完，飛機就掉下來。</p>
+  </div>
+</section>
+
+<section class="screen" id="run" aria-label="計時中" hidden>
+  <div class="clock">
+    <div class="big" id="left" role="timer" aria-label="剩下的時間">05:00</div>
+    <div class="batt" id="batt"><span class="cell"><i id="cellFill"></i></span><span id="battTxt">電量 100%</span><span style="color:var(--muted)">・共 <span id="totalTxt">5:00</span></span></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="controls">
+    <button class="btn main" id="pause" type="button"><svg viewBox="0 0 24 24"><path id="pauseIco" d="M6.5 5h4v14h-4zM13.5 5h4v14h-4z"/></svg><span id="pauseTxt">暫停</span></button>
+    <button class="btn" id="plus" type="button">＋1 分</button>
+    <button class="btn" id="stop" type="button"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>停止</button>
+  </div>
+</section>
+
+<section class="screen" id="done" aria-label="時間到" hidden>
+  <div class="spacer"></div>
+  <div class="card up" role="alertdialog" aria-labelledby="doneT" aria-describedby="doneP">
+    <h2 id="doneT">時間到！</h2>
+    <p id="doneP">電量用完，無人機掉到沙漠裡了。</p>
+    <div class="row">
+      <button class="btn go" id="again" type="button">再計一次 <span id="againTxt">5:00</span></button>
+      <button class="btn" id="reset" type="button">設定時間</button>
+    </div>
+  </div>
+</section>
+<div class="fade" id="fade"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} },
+  };
+  const reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  const mix = (a, b, t) => a + (b - a) * t;
+  const TAU = Math.PI * 2;
+  const fmtLeft = ms => { const s = Math.ceil(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(ss).padStart(2, '0'); };
+  const fmtShort = ms => { const s = Math.round(ms / 1000), m = Math.floor(s / 60), ss = s % 60; return m + ':' + String(ss).padStart(2, '0'); };
+
+  /* ---------------- timer state ---------------- */
+  let durMs = clamp(+store.get('drone-timer-ms', 300000) || 300000, 1000, 99 * 60000 + 59000);
+  let soundOn = store.get('drone-timer-sound', '1') === '1';
+  let state = 'setup';           // setup | running | paused | done
+  let endAt = 0, leftMs = durMs, totalMs = durMs, lastBeep = -1;
+
+  const inMin = $('inMin'), inSec = $('inSec');
+  function readDial() { return (clamp(parseInt(inMin.value, 10) || 0, 0, 99) * 60 + clamp(parseInt(inSec.value, 10) || 0, 0, 59)) * 1000; }
+  function writeDial(ms) {
+    const s = Math.round(ms / 1000);
+    inMin.value = String(Math.floor(s / 60)).padStart(2, '0'); inSec.value = String(s % 60).padStart(2, '0');
+    durMs = ms; $('start').disabled = ms <= 0;
+    document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', +c.dataset.ms === ms ? 'true' : 'false'));
+  }
+  const PRESETS = [[30, '30 秒'], [60, '1 分'], [180, '3 分'], [300, '5 分'], [600, '10 分'], [900, '15 分'], [1500, '25 分'], [1800, '30 分']];
+  PRESETS.forEach(([s, label]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.ms = String(s * 1000); b.textContent = label;
+    b.addEventListener('click', () => writeDial(s * 1000));
+    $('presets').appendChild(b);
+  });
+  function nudge(field, d) {
+    let m = clamp(parseInt(inMin.value, 10) || 0, 0, 99), s = clamp(parseInt(inSec.value, 10) || 0, 0, 59);
+    if (field === 'm') m = clamp(m + d, 0, 99);
+    else { let t = m * 60 + s + d; if (d > 0 && t % 5) t -= t % 5; t = clamp(t, 0, 99 * 60 + 55); m = Math.floor(t / 60); s = t % 60; }
+    writeDial((m * 60 + s) * 1000);
+  }
+  document.querySelectorAll('.step').forEach(b => {
+    let rep = null, delay = null;
+    const stopRep = () => { clearTimeout(delay); clearInterval(rep); delay = rep = null; };
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault(); nudge(b.dataset.f, +b.dataset.d);
+      delay = setTimeout(() => { rep = setInterval(() => nudge(b.dataset.f, +b.dataset.d), 90); }, 420);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stopRep));
+    b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nudge(b.dataset.f, +b.dataset.d); } });
+  });
+  [inMin, inSec].forEach(inp => {
+    inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 2); const ms = readDial(); durMs = ms; $('start').disabled = ms <= 0; document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', +c.dataset.ms === ms ? 'true' : 'false')); });
+    inp.addEventListener('focus', () => { setTimeout(() => { try { inp.select(); } catch (e) {} }, 0); });
+    inp.addEventListener('blur', () => writeDial(readDial()));
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { inp.blur(); } });
+  });
+  function setSound(v) { soundOn = v; store.set('drone-timer-sound', v ? '1' : '0'); $('sound').setAttribute('aria-pressed', v ? 'true' : 'false'); $('soundTxt').textContent = v ? '鈴聲 開' : '鈴聲 關'; }
+  $('sound').addEventListener('click', () => setSound(!soundOn));
+  setSound(soundOn); writeDial(durMs);
+
+  function show(which) {
+    for (const id of ['setup', 'run', 'done']) $(id).hidden = id !== which;
+    $('shade').classList.toggle('dim', which !== 'run');
+  }
+  function fadeThen(fn) { const f = $('fade'); f.classList.add('on'); setTimeout(() => { fn(); requestAnimationFrame(() => f.classList.remove('on')); }, 360); }
+
+  function startTimer(ms) {
+    unlockAudio(); stopAlarm();
+    totalMs = leftMs = ms; endAt = Date.now() + ms; lastBeep = -1;
+    store.set('drone-timer-ms', ms);
+    state = 'running'; fly.start();
+    $('totalTxt').textContent = fmtShort(ms); $('againTxt').textContent = fmtShort(ms);
+    setPaused(false); show('run'); wake(); updateHud();
+  }
+  function setPaused(p) {
+    $('pauseIco').setAttribute('d', p ? 'M7 4.5v15L19.5 12z' : 'M6.5 5h4v14h-4zM13.5 5h4v14h-4z');
+    $('pauseTxt').textContent = p ? '繼續' : '暫停';
+    $('left').classList.toggle('paused', p);
+  }
+  function togglePause() {
+    if (state === 'running') { leftMs = Math.max(0, endAt - Date.now()); state = 'paused'; setPaused(true); }
+    else if (state === 'paused') { unlockAudio(); endAt = Date.now() + leftMs; state = 'running'; setPaused(false); wake(); }
+    updateHud();
+  }
+  function plusMinute() {
+    if (state === 'running') endAt += 60000; else if (state === 'paused') leftMs += 60000; else return;
+    totalMs += 60000; $('totalTxt').textContent = fmtShort(totalMs); updateHud();
+  }
+  function stopTimer() { state = 'setup'; sleepOK(); stopAlarm(); document.title = '無人機計時器'; fadeThen(() => { fly.rest(); show('setup'); }); }
+  function finish() {
+    state = 'done'; leftMs = 0; updateHud();
+    fly.fall(); alarm();
+    try { if (navigator.vibrate) navigator.vibrate([400, 160, 400, 160, 700]); } catch (e) {}
+    document.title = '時間到！無人機計時器';
+    setTimeout(() => { if (state === 'done') { show('done'); sleepOK(); } }, 1700);
+  }
+  function check() {
+    if (state !== 'running') return;
+    leftMs = Math.max(0, endAt - Date.now());
+    const sec = Math.ceil(leftMs / 1000);
+    if (sec <= 3 && sec >= 1 && sec !== lastBeep) { lastBeep = sec; tick(); }
+    if (leftMs <= 0) finish();
+  }
+  function updateHud() {
+    const ms = state === 'running' ? Math.max(0, endAt - Date.now()) : leftMs;
+    const txt = fmtLeft(ms);
+    if ($('left').textContent !== txt) { $('left').textContent = txt; if (state === 'running') document.title = txt + '・無人機計時器'; }
+    const pct = totalMs > 0 ? ms / totalMs : 0;
+    $('cellFill').style.transform = `scaleX(${pct.toFixed(4)})`;
+    $('battTxt').textContent = '電量 ' + Math.ceil(pct * 100) + '%';
+    $('batt').classList.toggle('low', pct <= 0.15); $('batt').classList.toggle('mid', pct > 0.15 && pct <= 0.35);
+  }
+  $('start').addEventListener('click', () => { const ms = readDial(); if (ms > 0) { writeDial(ms); startTimer(ms); } });
+  $('pause').addEventListener('click', togglePause);
+  $('plus').addEventListener('click', plusMinute);
+  $('stop').addEventListener('click', stopTimer);
+  $('again').addEventListener('click', () => { stopAlarm(); fadeThen(() => { fly.rest(); startTimer(durMs); }); });
+  $('reset').addEventListener('click', () => { stopAlarm(); state = 'setup'; document.title = '無人機計時器'; fadeThen(() => { fly.rest(); writeDial(durMs); show('setup'); }); });
+  addEventListener('keydown', e => {
+    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.key === ' ' && (state === 'running' || state === 'paused')) { e.preventDefault(); togglePause(); }
+  });
+  setInterval(() => { check(); if (state === 'running' || state === 'paused') updateHud(); }, 250);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { check(); if (state === 'running') wake(); } });
+
+  /* ---------------- keep the screen on while timing ---------------- */
+  let wl = null;
+  async function wake() { try { if ('wakeLock' in navigator && !wl) { wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); } } catch (e) { wl = null; } }
+  function sleepOK() { try { if (wl) wl.release(); } catch (e) {} wl = null; }
+
+  /* ---------------- sound: made on the spot with Web Audio ---------------- */
+  let actx = null, alarmBus = null;
+  function unlockAudio() {
+    if (!soundOn) return;
+    try {
+      if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} }
+      if (actx.state !== 'running') actx.resume();
+      const b = actx.createBuffer(1, 1, 22050), s = actx.createBufferSource(); s.buffer = b; s.connect(actx.destination); s.start(0);
+    } catch (e) {}
+  }
+  function voice(bus, t0, f0, f1, dur, type, vol, filt) {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t0); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.setValueAtTime(vol, t0 + Math.max(0.013, dur - 0.04)); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    let node = o;
+    if (filt) { const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filt; o.connect(f); node = f; }
+    node.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function thump(bus, t0) {
+    const n = Math.floor(actx.sampleRate * 0.4), buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+    const s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+    s.buffer = buf; f.type = 'lowpass'; f.frequency.value = 520; g.gain.value = 0.9;
+    s.connect(f); f.connect(g); g.connect(bus); s.start(t0);
+    voice(bus, t0, 110, 42, 0.32, 'sine', 0.7);
+  }
+  function tick() {
+    if (!soundOn || !actx || actx.state !== 'running') return;
+    voice(actx.destination, actx.currentTime + 0.01, 1320, 1320, 0.07, 'sine', 0.18);
+  }
+  function alarm() {
+    if (!soundOn) return;
+    unlockAudio();
+    if (!actx) return;
+    stopAlarm();
+    alarmBus = actx.createGain(); alarmBus.gain.value = 1; alarmBus.connect(actx.destination);
+    const t = actx.currentTime + 0.03;
+    voice(alarmBus, t, 760, 130, 1.25, 'sawtooth', 0.06, 1400);      // motors winding down as it drops
+    thump(alarmBus, t + 1.25);                                         // hits the sand
+    for (let r = 0; r < 4; r++) for (let i = 0; i < 4; i++) voice(alarmBus, t + 1.95 + r * 1.35 + i * 0.2, 1046, 1046, 0.12, 'square', 0.09, 3200);
+  }
+  function stopAlarm() {
+    if (!alarmBus || !actx) return;
+    try { alarmBus.gain.setTargetAtTime(0, actx.currentTime, 0.02); const b = alarmBus; setTimeout(() => { try { b.disconnect(); } catch (e) {} }, 300); } catch (e) {}
+    alarmBus = null;
+  }
+
+  /* ---------------- the desert and the drone ---------------- */
+  const cv = $('cv');
+  let R = null;
+  try { R = window.THREE ? new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: 'high-performance' }) : null; } catch (e) { R = null; }
+  const fly = { start() {}, rest() {}, fall() {} };
+  if (!R) { $('nogl').hidden = false; }
+  else {
+    R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+    const cam = new THREE.PerspectiveCamera(55, 1, 0.2, 3000);
+    const sc = new THREE.Scene();
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const canvasTex = (size, paint) => { const c = document.createElement('canvas'); c.width = c.height = size; paint(c.getContext('2d'), size); return new THREE.CanvasTexture(c); };
+    const BLOB = canvasTex(64, (x, s) => { const g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2); g.addColorStop(0, 'rgba(0,0,0,.85)'); g.addColorStop(0.5, 'rgba(0,0,0,.4)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, s, s); });
+    const PUFF = canvasTex(64, (x, s) => { const g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2); g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, s, s); });
+
+    // sky: day at the start, sunset when the time runs out
+    const skyU = { uTop: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uSun: { value: V3(0, 1, 0) }, uSunCol: { value: new THREE.Color() }, uGlow: { value: 0.6 } };
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(1000, 32, 16), new THREE.ShaderMaterial({
+      uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
+      vertexShader: 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform vec3 uTop, uHor, uSun, uSunCol; uniform float uGlow; varying vec3 vD;
+        void main(){ vec3 d = normalize(vD);
+          vec3 c = mix(uHor, uTop, pow(smoothstep(0.0, 1.0, d.y), 0.55));
+          float sd = max(dot(d, uSun), 0.0);
+          c += uSunCol * (pow(sd, 10.0) * 0.45 + pow(sd, 90.0) * 0.6) * uGlow;
+          c = mix(c, uSunCol * 1.15 + vec3(0.1), 1.0 - smoothstep(0.9988, 0.9993, sd));
+          gl_FragColor = vec4(c, 1.0); }`,
+    }));
+    sky.renderOrder = -10; sky.frustumCulled = false; sc.add(sky);
+    sc.fog = new THREE.Fog(0xf0d8b8, 120, 620);
+    const hemi = new THREE.HemisphereLight(0xcfe0ff, 0xd9a066, 0.65); sc.add(hemi);
+    const sun = new THREE.DirectionalLight(0xfff1d8, 0.95); sc.add(sun);
+
+    // dunes: height worked out on the graphics card (and the same formula here for the drone and the camera)
+    const GL = `
+float H(float x, float z) {
+  float r1 = 1.0 - abs(sin(x * 0.03 + z * 0.012 + 1.4 * sin(z * 0.009)));
+  float r2 = 1.0 - abs(sin(x * 0.067 - z * 0.025 + 1.7));
+  float h = 7.0 * r1 * r1 + 2.4 * r2 * r2 + 1.0 * sin(x * 0.13 + z * 0.1);
+  float d = length(vec2(x, z));
+  return h + 30.0 * smoothstep(260.0, 560.0, d) * (0.6 + 0.4 * sin(atan(z, x) * 5.0));
+}`;
+    const Hj = (x, z) => {
+      const r1 = 1 - Math.abs(Math.sin(x * 0.03 + z * 0.012 + 1.4 * Math.sin(z * 0.009)));
+      const r2 = 1 - Math.abs(Math.sin(x * 0.067 - z * 0.025 + 1.7));
+      const h = 7 * r1 * r1 + 2.4 * r2 * r2 + 1 * Math.sin(x * 0.13 + z * 0.1);
+      const d = Math.hypot(x, z);
+      return h + 30 * smooth(260, 560, d) * (0.6 + 0.4 * Math.sin(Math.atan2(z, x) * 5));
+    };
+    const geo = new THREE.PlaneGeometry(1300, 1300, 170, 170); geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    mat.onBeforeCompile = sh => {
+      const head = 'varying vec3 vWp;\nvarying vec3 vNr;\n' + GL + '\n';
+      sh.vertexShader = head + sh.vertexShader
+        .replace('#include <beginnormal_vertex>', 'float ee_ = 0.9;\nvec3 objectNormal = normalize(vec3(H(position.x - ee_, position.z) - H(position.x + ee_, position.z), 2.0 * ee_, H(position.x, position.z - ee_) - H(position.x, position.z + ee_)));\nvNr = objectNormal;')
+        .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position.x, H(position.x, position.z), position.z);\nvWp = transformed;');
+      sh.fragmentShader = 'varying vec3 vWp;\nvarying vec3 vNr;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        vec3 n_ = normalize(vNr);
+        vec3 sand = vec3(0.97, 0.75, 0.48);
+        sand = mix(sand, vec3(0.84, 0.55, 0.34), smoothstep(0.05, 0.45, 1.0 - n_.y) * 0.55);
+        sand *= 0.93 + 0.07 * sin(vWp.x * 2.0 + vWp.z * 0.8 + sin(vWp.x * 0.3) * 2.0);
+        diffuseColor.rgb *= sand;`);
+    };
+    mat.customProgramCacheKey = () => 'timer-dunes';
+    const ground = new THREE.Mesh(geo, mat); ground.frustumCulled = false; sc.add(ground);
+
+    // far mesas, rocks and dry bushes so there is something to fly past
+    const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    for (let i = 0; i < 9; i++) {
+      const a = i / 9 * TAU + hash(i) * 0.5, d = 470 + hash(i + 3) * 160, r = 30 + hash(i + 5) * 40, h = 40 + hash(i + 7) * 50;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, h, 9), new THREE.MeshLambertMaterial({ color: 0xb4674a }));
+      m.position.set(Math.cos(a) * d, Hj(Math.cos(a) * d, Math.sin(a) * d) + h / 2 - 4, Math.sin(a) * d); sc.add(m);
+    }
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e3 = new THREE.Euler();
+    const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x8a5a3c }), 90);
+    for (let i = 0; i < 90; i++) {
+      const a = hash(i + 20) * TAU, d = 20 + Math.sqrt(hash(i + 21)) * 240, x = Math.cos(a) * d, z = Math.sin(a) * d, s = 0.6 + hash(i + 22) * 2.2;
+      q.setFromEuler(e3.set(hash(i + 23) * 3, hash(i + 24) * 3, 0)); m4.compose(V3(x, Hj(x, z) - s * 0.3, z), q, V3(s, s * 0.7, s)); rocks.setMatrixAt(i, m4);
+    }
+    sc.add(rocks);
+    const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.7, 0), new THREE.MeshLambertMaterial({ color: 0x8c8a45 }), 70);
+    for (let i = 0; i < 70; i++) { const a = hash(i + 60) * TAU, d = 15 + Math.sqrt(hash(i + 61)) * 230, x = Math.cos(a) * d, z = Math.sin(a) * d, s = 0.7 + hash(i + 62); m4.compose(V3(x, Hj(x, z) + 0.1, z), q.identity(), V3(s, s * 0.55, s)); bush.setMatrixAt(i, m4); }
+    sc.add(bush);
+
+    // drone (the same white quadcopter as in the game), facing -z
+    const MOTORS = [[2.0, 2.9], [2.0, -2.9], [-2.3, 2.9], [-2.3, -2.9]];
+    const drone = new THREE.Group(), model = new THREE.Group();
+    drone.rotation.order = 'YXZ'; drone.add(model); sc.add(drone);
+    model.scale.setScalar(0.2); model.rotation.y = Math.PI / 2; model.position.y = 0.17;
+    const P = (c, sh) => new THREE.MeshPhongMaterial({ color: c, shininess: sh, specular: 0x3a3a3a });
+    const white = P(0xf2f4f6, 70), white2 = P(0xffffff, 80), grey = P(0x8a929a, 30), dark = P(0x1f252b, 30);
+    const sph = new THREE.SphereGeometry(1, 20, 14);
+    const part = (g, m, x, y, z, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); model.add(o); return o; };
+    part(sph, white, 0.2, 0, 0, 2.2, 0.6, 0.78); part(sph, white2, -0.3, 0.3, 0, 1.6, 0.34, 0.62); part(sph, white, -1.75, -0.02, 0, 1.15, 0.5, 0.66);
+    part(new THREE.BoxGeometry(0.06, 0.26, 1.0), grey, -1.0, 0.08, 0); part(sph, dark, 2.25, -0.14, 0, 0.42, 0.42, 0.42);
+    const lens = part(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 16), P(0x6f8ea6, 120), 2.62, -0.14, 0); lens.rotation.z = Math.PI / 2;
+    const armG = new THREE.BoxGeometry(1, 0.2, 0.26), motorG = new THREE.CylinderGeometry(0.3, 0.34, 0.5, 14), capG = new THREE.CylinderGeometry(0.16, 0.16, 0.12, 10);
+    const bladeG = new THREE.BoxGeometry(2.8, 0.04, 0.22), legG = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6), discG = new THREE.CircleGeometry(1.45, 28);
+    const discMat = new THREE.MeshBasicMaterial({ color: 0xf2f5f7, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide });
+    const props = [], discs = [];
+    for (const [mx, mz] of MOTORS) {
+      const sx = mx > 0 ? 0.6 : -0.6, sz = Math.sign(mz) * 0.35, dx = mx - sx, dz = mz - sz, len = Math.hypot(dx, dz);
+      const arm = part(armG, white, sx + dx / 2, 0.08, sz + dz / 2, len, 1, 1); arm.rotation.y = -Math.atan2(dz, dx);
+      part(motorG, white2, mx, 0.2, mz); part(capG, grey, mx, 0.5, mz);
+      props.push(part(bladeG, P(0xe3e8ec, 30), mx, 0.58, mz));
+      const disc = new THREE.Mesh(discG, discMat); disc.rotation.x = -Math.PI / 2; disc.position.set(mx, 0.6, mz); model.add(disc); discs.push(disc);
+      part(legG, grey, mx, -0.4, mz); part(sph, grey, mx, -0.82, mz, 0.09, 0.09, 0.09);
+    }
+    const ledF = new THREE.MeshBasicMaterial({ color: 0x3ddc84 }), ledB = new THREE.MeshBasicMaterial({ color: 0xff4d4d });
+    for (const [mx, mz] of MOTORS) part(new THREE.SphereGeometry(0.14, 8, 6), mx > 0 ? ledF : ledB, mx, 0.02, mz + Math.sign(mz) * 0.33);
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false })); shadow.rotation.x = -Math.PI / 2; shadow.renderOrder = 1; sc.add(shadow);
+
+    // blowing sand near the drone, and a puff of sand when it hits the ground
+    const NS = 360, sandP = new Float32Array(NS * 3);
+    const sand = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(sandP, 3)), new THREE.PointsMaterial({ map: PUFF, color: 0xffe3b8, size: 0.12, transparent: true, opacity: 0.75, depthWrite: false }));
+    sand.frustumCulled = false; sc.add(sand);
+    const ND = 70, dustP = new Float32Array(ND * 3), dustV = [];
+    const dust = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(dustP, 3)), new THREE.PointsMaterial({ map: PUFF, color: 0xe9c08a, size: 1.6, transparent: true, opacity: 0, depthWrite: false }));
+    dust.frustumCulled = false; sc.add(dust);
+
+    // flight path: a long wandering loop over the dunes that never quite repeats
+    const pathXZ = f => [
+      70 * Math.sin(f * 0.071) + 40 * Math.sin(f * 0.173 + 1.3) + 18 * Math.sin(f * 0.41 + 0.7),
+      70 * Math.sin(f * 0.059 + 2.1) + 40 * Math.sin(f * 0.151 + 0.4) + 18 * Math.sin(f * 0.37 + 2.2)];
+    const ease = f => f < 4 ? f * f / 8 : f - 2;           // gentle start after take-off
+    const HOME = pathXZ(0), HOME_Y = Hj(HOME[0], HOME[1]);
+    const yawAt = f => { const a = pathXZ(ease(f)), b = pathXZ(ease(f + 0.25)); return Math.atan2(-(b[0] - a[0]), -(b[1] - a[1])); };
+    const unwrap = (a, ref) => { while (a - ref > Math.PI) a -= TAU; while (a - ref < -Math.PI) a += TAU; return a; };
+
+    let mode = 'rest', f = 0, yaw = Math.atan2(-(pathXZ(1)[0] - HOME[0]), -(pathXZ(1)[1] - HOME[1]));
+    const pos = V3(HOME[0], HOME_Y, HOME[1]), rot = V3(0, yaw, 0);
+    let fallT = 0, fall0 = null, impact = null, rt = 0;
+    const camPos = V3(HOME[0] + 8, HOME_Y + 3, HOME[1] + 8), camLook = pos.clone();
+    let progress = 0;   // 0 at the start of a countdown, 1 when it runs out (drives the sunset)
+
+    fly.start = () => { mode = 'fly'; f = 0; impact = null; };
+    fly.rest = () => { mode = 'rest'; f = 0; impact = null; pos.set(HOME[0], HOME_Y, HOME[1]); rot.set(0, yaw = Math.atan2(-(pathXZ(1)[0] - HOME[0]), -(pathXZ(1)[1] - HOME[1])), 0); dust.material.opacity = 0; camPos.set(HOME[0] + 8, HOME_Y + 3, HOME[1] + 8); camLook.copy(pos); };
+    fly.fall = () => {
+      mode = 'fall'; fallT = 0;
+      const a = pathXZ(ease(f)), b = pathXZ(ease(f + 0.1));
+      fall0 = { p: pos.clone(), vx: (b[0] - a[0]) * 10 * 0.6, vz: (b[1] - a[1]) * 10 * 0.6, rot: rot.clone(), spinX: (Math.random() - 0.5) * 2, spinZ: 2 + Math.random() };
+      fall0.g = 2 * Math.max(1, fall0.p.y - Hj(fall0.p.x, fall0.p.z)) / (1.25 * 1.25);
+    };
+
+    const SKY = {
+      day: { top: new THREE.Color(0x3d7cc9), hor: new THREE.Color(0xf2dcc0), sun: new THREE.Color(0xfff2d6), fog: new THREE.Color(0xeed8bc), light: new THREE.Color(0xfff1dc), hemiS: new THREE.Color(0xcfe0ff), hemiG: new THREE.Color(0xd9a066) },
+      dusk: { top: new THREE.Color(0x2a275a), hor: new THREE.Color(0xf08a4e), sun: new THREE.Color(0xffb468), fog: new THREE.Color(0xd98c5c), light: new THREE.Color(0xffa060), hemiS: new THREE.Color(0x9a88d0), hemiG: new THREE.Color(0xd08a5a) },
+    };
+    function setSky(p) {
+      const D = SKY.day, K = SKY.dusk, k = smooth(0, 1, p);
+      skyU.uTop.value.copy(D.top).lerp(K.top, k); skyU.uHor.value.copy(D.hor).lerp(K.hor, k); skyU.uSunCol.value.copy(D.sun).lerp(K.sun, k);
+      sc.fog.color.copy(D.fog).lerp(K.fog, k);
+      const el = mix(0.62, 0.085, k), az = mix(-0.5, -0.95, k);
+      const sd = V3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize();
+      skyU.uSun.value.copy(sd); skyU.uGlow.value = mix(0.5, 1.0, k);
+      sun.position.copy(sd).multiplyScalar(100); sun.color.copy(D.light).lerp(K.light, k); sun.intensity = mix(0.95, 0.85, k);
+      hemi.color.copy(D.hemiS).lerp(K.hemiS, k); hemi.groundColor.copy(D.hemiG).lerp(K.hemiG, k); hemi.intensity = mix(0.65, 0.74, k);
+    }
+
+    const tmp = V3(0, 0, 0);
+    function update(dt, now) {
+      rt += dt;
+      const p = state === 'running' ? clamp(1 - (endAt - Date.now()) / totalMs, 0, 1) : state === 'paused' ? clamp(1 - leftMs / totalMs, 0, 1) : state === 'done' ? 1 : 0;
+      progress += (p - progress) * (1 - Math.exp(-dt * 3));
+      setSky(progress);
+      let still = false, look = null;
+      if (mode === 'rest') {
+        still = true;
+        pos.set(HOME[0], HOME_Y, HOME[1]); rot.set(0, yaw, 0);
+        const a = rt * 0.12;
+        // keep the resting drone in the upper part of the screen, above the time card
+        const portrait = innerHeight > innerWidth;
+        tmp.set(HOME[0] + Math.sin(a) * 9, HOME_Y + 3.4, HOME[1] + Math.cos(a) * 9);
+        look = V3(HOME[0], HOME_Y + (portrait ? -2.6 : -0.8), HOME[1]);
+      } else if (mode === 'fly') {
+        if (state === 'running') f += dt;
+        const s = ease(f), [x, z] = pathXZ(s), gy = Hj(x, z);
+        const lift = smooth(0, 2.6, f);
+        const alt = 7 + 3 * Math.sin(f * 0.23) + 2 * Math.sin(f * 0.61);
+        const hover = state === 'paused' ? 0.25 * Math.sin(rt * 2.2) : 0;
+        pos.set(x, mix(HOME_Y, Math.max(gy, Hj(x + 6, z), Hj(x, z + 6)) + alt, lift) + hover, z);
+        const target = f > 0.5 ? yawAt(f) : yaw;
+        yaw = unwrap(yaw, target); yaw += (target - yaw) * (1 - Math.exp(-dt * 3));
+        const turn = state === 'running' ? unwrap(yawAt(f + 0.5), yawAt(f)) - yawAt(f) : 0;
+        const speedK = state === 'running' ? smooth(0, 4, f) : 0;
+        rot.x += (-0.22 * speedK - rot.x) * (1 - Math.exp(-dt * 3));
+        rot.z += (clamp(turn * 1.2, -0.45, 0.45) - rot.z) * (1 - Math.exp(-dt * 3));
+        rot.y = yaw;
+        const c = Math.cos(yaw), sn = Math.sin(yaw), orbit = 0.7 * Math.sin(rt * 0.07);
+        const ox = Math.sin(orbit) * 9.5, oz = Math.cos(orbit) * 9.5;
+        tmp.set(pos.x + ox * c + oz * sn, pos.y + 3.2, pos.z - ox * sn + oz * c);
+        look = V3(pos.x - sn * 4, pos.y + 0.2, pos.z - c * 4);
+      } else {
+        // falling, then lying in the sand
+        still = true;
+        const F = fall0; fallT += dt;
+        const gy = Hj(pos.x, pos.z);
+        if (!impact) {
+          pos.set(F.p.x + F.vx * fallT, F.p.y - 0.5 * F.g * fallT * fallT, F.p.z + F.vz * fallT);
+          rot.set(F.rot.x + F.spinX * fallT, F.rot.y, F.rot.z + F.spinZ * fallT * 0.6);
+          const g2 = Hj(pos.x, pos.z);
+          if (pos.y <= g2 + 0.15) {
+            impact = { x: pos.x, z: pos.z, y: g2, t: fallT };
+            pos.y = g2 + 0.05; rot.set(0.12, F.rot.y + 0.4, 0.55);
+            for (let i = 0; i < ND; i++) {
+              const a = Math.random() * TAU, sp = 1.5 + Math.random() * 3.5;
+              dustV[i] = [Math.cos(a) * sp, 1.5 + Math.random() * 3, Math.sin(a) * sp];
+              dustP.set([pos.x, g2 + 0.3, pos.z], i * 3);
+            }
+          }
+        } else {
+          pos.y = impact.y + 0.05;
+        }
+        if (impact) {
+          const age = fallT - impact.t;
+          for (let i = 0; i < ND; i++) {
+            const v = dustV[i];
+            dustP[i * 3] += v[0] * dt; dustP[i * 3 + 1] += (v[1] - 2.2 * age) * dt; dustP[i * 3 + 2] += v[2] * dt;
+            v[0] *= 0.97; v[2] *= 0.97;
+          }
+          dust.geometry.attributes.position.needsUpdate = true;
+          dust.material.opacity = 0.8 * Math.max(0, 1 - age / 2.2);
+          const a = 0.6 + age * 0.05;
+          tmp.set(impact.x + Math.sin(a) * 6.5, impact.y + 2.0, impact.z + Math.cos(a) * 6.5);
+          look = V3(impact.x, impact.y + (innerHeight > innerWidth ? -1.2 : 0.2), impact.z);
+        } else {
+          tmp.copy(camPos); look = pos.clone();
+        }
+        void gy;
+      }
+      // camera: glides after its target, never into a dune
+      tmp.y = Math.max(tmp.y, Hj(tmp.x, tmp.z) + 1.2);
+      const k = 1 - Math.exp(-dt * (mode === 'fly' ? 2.2 : mode === 'fall' ? 2.6 : 1.6));
+      camPos.lerp(tmp, k); camLook.lerp(look, 1 - Math.exp(-dt * 4));
+      cam.position.copy(camPos); cam.lookAt(camLook);
+      sky.position.copy(cam.position);
+      drone.position.copy(pos); drone.rotation.set(rot.x, rot.y, rot.z);
+      props.forEach((b, i) => { b.rotation.y = still ? 0.6 * i : rt * 50 * (i % 2 ? 1 : -1); });
+      discs.forEach(d => { d.visible = !still; });
+      const gy = Hj(pos.x, pos.z), hgt = pos.y - gy;
+      shadow.position.set(pos.x, gy + 0.06, pos.z); shadow.scale.setScalar(2.4 + hgt * 0.08); shadow.material.opacity = 0.55 * (1 - smooth(0, 20, hgt));
+      for (let i = 0; i < NS; i++) {
+        const x = cam.position.x + ((hash(i + 100) * 60 + 4 * rt * (0.6 + hash(i + 101))) % 60) - 30;
+        const z = cam.position.z + hash(i + 102) * 60 - 30;
+        sandP[i * 3] = x; sandP[i * 3 + 1] = Hj(x, z) + hash(i + 103) * 1.4 + 0.1 * Math.sin(rt * 3 + i); sandP[i * 3 + 2] = z;
+      }
+      sand.geometry.attributes.position.needsUpdate = true;
+    }
+
+    function resize() {
+      const w = innerWidth, h = innerHeight;
+      R.setSize(w, h, false); cam.aspect = w / h; cam.fov = w / h < 0.8 ? 66 : 55; cam.updateProjectionMatrix();
+    }
+    addEventListener('resize', resize); resize();
+    fly.rest();
+    let last = performance.now();
+    (function loop(now) {
+      const dt = Math.min(0.1, (now - last) / 1000); last = now;
+      check(); if (state === 'running' || state === 'paused') updateHud();
+      update(reduce && mode === 'rest' ? dt * 0.3 : dt, now);
+      R.render(sc, cam);
+      requestAnimationFrame(loop);
+    })(performance.now());
+  }
+  updateHud();
+})();
+</script>
+</body>
+</html>

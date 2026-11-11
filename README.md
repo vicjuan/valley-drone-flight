@@ -10,6 +10,8 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 
 **🎬 教學 App：<https://vicjuan.github.io/valley-drone-flight/tutorial/>**（立體動畫，有中文語音旁白：無人機在山區遇到強風、沒電、收不到訊號時怎麼做）
 
+**⏱ 計時器 App：<https://vicjuan.github.io/valley-drone-flight/timer/>**（計時的時候無人機在沙漠裡到處飛，時間到就掉下來）
+
 ![遊戲畫面](docs/screenshot.jpg)
 
 ## 場景
@@ -89,6 +91,15 @@ A browser-based 3D drone flying game with two scenes, a mountain valley and a de
 
 播放鍵旁的喇叭按鈕可以開關旁白（電腦按 V）；章節按鈕可以直接跳到想看的狀況。旁白是用開源的語音合成模型（[Kokoro v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh)，Apache-2.0 授權）事先產生的；旁白比字幕長的地方，動畫會放慢一點，讓畫面、字幕和聲音對齊。加到主畫面的方法跟音樂 App 一樣。
 
+## 計時器 App「空拍計時」
+
+`timer/` 是一個計時器。一打開先設定時間（分、秒，或點常用時間），按「開始計時」後：
+
+- 無人機從沙地起飛，在沙漠裡到處飛；畫面上方是剩下的時間，電池格就是剩下的比例，太陽會隨著時間慢慢下山。
+- 可以暫停、加一分鐘、停止；最後 3 秒會嗶嗶倒數。
+- 時間到：電量用完，螺旋槳停轉，無人機掉進沙裡、揚起沙塵，接著響鈴（可以在設定畫面關掉鈴聲），手機支援的話也會震動。
+- 計時中會讓螢幕保持亮著；上次設定的時間會記住。
+
 ## 執行
 
 - 直接用瀏覽器打開 `index.html` 就能玩，需要網路來載入 three.js 和字型。
@@ -131,6 +142,7 @@ icons/                 主畫面圖示
 music/                 五首背景音樂
 player/                音樂 App「空拍音樂」（播放器和五段 3D 動畫）
 tutorial/              教學 App「飛行教學」（立體動畫和語音旁白）
+timer/                 計時器 App「空拍計時」
 style.css              樣式
 src/core.js            兩個場景的地形、風、訊號、電量、飛行模型、自動返航、任務規則（不碰畫面）
 src/desert.js          沙漠場景：棕櫚樹、地標、揚沙、沙牆崩塌、會倒的土磚牆
