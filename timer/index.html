@@ -84,6 +84,14 @@ h1{margin:4px 0 0;font:900 clamp(28px,7.5vw,40px)/1.15 var(--f-display)}
 .hint{margin:0;color:var(--muted);font-size:13px;line-height:1.55;text-align:center}
 /* countdown */
 .clock{display:flex;flex-direction:column;align-items:center;gap:8px;text-shadow:0 3px 18px rgba(0,0,0,.55)}
+/* the countdown hangs like a sign from two steel posts that come down from the top of the screen */
+.hang{position:relative;margin-top:clamp(18px,5vh,46px)}
+.rod{position:absolute;bottom:calc(100% - 6px);width:10px;height:100vh;border-radius:3px;background:linear-gradient(90deg,#6f7880 0%,#d9dfe4 38%,#f4f7f9 50%,#a9b2ba 70%,#5f676e 100%);box-shadow:0 0 0 1px rgba(0,0,0,.25),2px 0 8px rgba(0,0,0,.25)}
+.rod.l{left:16%}
+.rod.r{right:16%}
+.rod::after{content:"";position:absolute;left:50%;bottom:-2px;width:26px;height:12px;transform:translateX(-50%);border-radius:4px;background:linear-gradient(180deg,#e9edf0,#9aa3ab);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.board{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:clamp(10px,2.4vw,16px) clamp(18px,5vw,30px) clamp(12px,2.6vw,16px);border-radius:20px;background:rgba(10,14,20,.58);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:4px solid #c3cbd2;box-shadow:inset 0 0 0 2px rgba(0,0,0,.35),inset 0 2px 0 rgba(255,255,255,.18),0 14px 34px rgba(0,0,0,.4)}
+.board .batt{background:transparent;border:0;padding:0;-webkit-backdrop-filter:none;backdrop-filter:none}
 .big{font:700 clamp(64px,20vw,120px)/1 var(--f-data);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .big.paused{animation:blink 1.2s steps(2,start) infinite}
 @keyframes blink{to{opacity:.35}}
@@ -132,9 +140,12 @@ h1{margin:4px 0 0;font:900 clamp(28px,7.5vw,40px)/1.15 var(--f-display)}
 </section>
 
 <section class="screen" id="run" aria-label="計時中" hidden>
-  <div class="clock">
-    <div class="big" id="left" role="timer" aria-label="剩下的時間">05:00</div>
-    <div class="batt" id="batt"><span class="cell"><i id="cellFill"></i></span><span id="battTxt">電量 100%</span><span style="color:var(--muted)">・共 <span id="totalTxt">5:00</span></span></div>
+  <div class="clock hang">
+    <span class="rod l" aria-hidden="true"></span><span class="rod r" aria-hidden="true"></span>
+    <div class="board">
+      <div class="big" id="left" role="timer" aria-label="剩下的時間">05:00</div>
+      <div class="batt" id="batt"><span class="cell"><i id="cellFill"></i></span><span id="battTxt">電量 100%</span><span style="color:var(--muted)">・共 <span id="totalTxt">5:00</span></span></div>
+    </div>
   </div>
   <div class="spacer"></div>
   <div class="controls">
